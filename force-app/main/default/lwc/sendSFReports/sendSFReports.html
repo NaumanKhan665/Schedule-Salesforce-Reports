@@ -1,0 +1,323 @@
+<!-- reportEmailScheduler.html -->
+<template>
+    <lightning-card title="Schedule Report Email" icon-name="standard:email">
+        <div class="slds-p-horizontal_medium">
+            
+            <!-- Report Selection Section -->
+            <div class="slds-form-element slds-m-bottom_medium">
+                <label class="slds-form-element__label" for="report-selector">
+                    <abbr class="slds-required" title="required">*</abbr>
+                    Select Report
+                </label>
+                <div class="slds-form-element__control">
+                    <lightning-combobox
+                        name="reportSelector"
+                        label="Select Report"
+                        value={selectedReportId}
+                        placeholder="Choose a report..."
+                        options={reportOptions}
+                        onchange={handleReportChange}
+                        variant="label-hidden"
+                        required>
+                    </lightning-combobox>
+                </div>
+            </div>
+
+            <!-- Recipients Section -->
+            <div class="slds-form-element slds-m-bottom_medium">
+                <label class="slds-form-element__label">
+                    <abbr class="slds-required" title="required">*</abbr>
+                    Email Recipients
+                </label>
+                <div class="slds-form-element__control">
+                    <lightning-input
+                        type="email"
+                        name="emailInput"
+                        placeholder="Enter email address"
+                        value={currentEmail}
+                        onchange={handleEmailInputChange}
+                        class="slds-m-bottom_x-small">
+                    </lightning-input>
+                    <lightning-button
+                        label="Add Email"
+                        variant="brand"
+                        onclick={addEmail}
+                        disabled={isAddEmailDisabled}
+                        class="slds-m-bottom_small">
+                    </lightning-button>
+                </div>
+                
+                <!-- Email Pills -->
+                <div if:true={hasEmails} class="slds-m-top_small">
+                    <template for:each={emailList} for:item="email">
+                        <lightning-pill
+                            key={email}
+                            label={email}
+                            name={email}
+                            onremove={removeEmail}
+                            class="slds-m-right_x-small slds-m-bottom_x-small">
+                        </lightning-pill>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Schedule Type Section -->
+            <div class="slds-form-element slds-m-bottom_medium">
+                <label class="slds-form-element__label">
+                    <abbr class="slds-required" title="required">*</abbr>
+                    Schedule Type
+                </label>
+                <div class="slds-form-element__control">
+                    <lightning-radio-group
+                        name="scheduleType"
+                        label="Schedule Type"
+                        options={scheduleTypeOptions}
+                        value={selectedScheduleType}
+                        onchange={handleScheduleTypeChange}
+                        type="radio"
+                        variant="label-hidden">
+                    </lightning-radio-group>
+                </div>
+            </div>
+
+            <!-- Day Selection (for Weekly/Monthly) -->
+            <div if:true={showDaySelection} class="slds-form-element slds-m-bottom_medium">
+                <label class="slds-form-element__label">
+                    <abbr class="slds-required" title="required">*</abbr>
+                    {daySelectionLabel}
+                </label>
+                <div class="slds-form-element__control">
+                    <lightning-combobox
+                        name="daySelector"
+                        label={daySelectionLabel}
+                        value={selectedDay}
+                        placeholder={daySelectionPlaceholder}
+                        options={dayOptions}
+                        onchange={handleDayChange}
+                        variant="label-hidden"
+                        required>
+                    </lightning-combobox>
+                </div>
+            </div>
+
+            <!-- Time Selection -->
+            <div class="slds-form-element slds-m-bottom_medium">
+                <label class="slds-form-element__label">
+                    <abbr class="slds-required" title="required">*</abbr>
+                    Schedule Time
+                </label>
+                <div class="slds-form-element__control">
+                    <lightning-input
+                        type="time"
+                        name="scheduleTime"
+                        label="Schedule Time"
+                        value={selectedTime}
+                        onchange={handleTimeChange}
+                        variant="label-hidden"
+                        required>
+                    </lightning-input>
+                </div>
+            </div>
+
+            <!-- Email Subject -->
+            <div class="slds-form-element slds-m-bottom_medium">
+                <label class="slds-form-element__label">
+                    Email Subject
+                </label>
+                <div class="slds-form-element__control">
+                    <lightning-input
+                        type="text"
+                        name="emailSubject"
+                        placeholder="Enter email subject (optional)"
+                        value={emailSubject}
+                        onchange={handleSubjectChange}
+                        variant="label-hidden">
+                    </lightning-input>
+                </div>
+            </div>
+
+            <!-- Status Section -->
+            <div if:true={showStatus} class="slds-m-bottom_medium">
+                <lightning-formatted-text value={statusMessage} class={statusClass}>
+                </lightning-formatted-text>
+            </div>
+
+        </div>
+
+        <!-- Footer Actions -->
+        <div slot="footer" class="slds-text-align_right">
+            <lightning-button
+                label="Cancel"
+                onclick={handleCancel}
+                class="slds-m-right_small">
+            </lightning-button>
+            <lightning-button
+                label="Schedule Report"
+                variant="brand"
+                onclick={handleSchedule}
+                disabled={isScheduleDisabled}>
+            </lightning-button>
+        </div>
+    </lightning-card>
+
+    <!-- Scheduled Reports Section -->
+    <lightning-card title="Scheduled Reports" icon-name="standard:list_email" class="slds-m-top_medium">
+        <div class="slds-p-horizontal_medium">
+            
+            <!-- Refresh Button -->
+            <div class="slds-m-bottom_medium slds-text-align_right">
+                <lightning-button
+                    label="Refresh"
+                    icon-name="utility:refresh"
+                    onclick={refreshScheduledReports}
+                    class="slds-m-right_small">
+                </lightning-button>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div if:true={isLoadingSchedules} class="slds-text-align_center slds-m-vertical_medium">
+                <lightning-spinner alternative-text="Loading scheduled reports..." size="small"></lightning-spinner>
+            </div>
+
+            <!-- No Scheduled Reports Message -->
+            <div if:true={showNoSchedulesMessage} class="slds-text-align_center slds-m-vertical_large">
+                <lightning-icon icon-name="utility:info" size="medium" class="slds-m-bottom_small"></lightning-icon>
+                <p class="slds-text-heading_small slds-text-color_weak">No scheduled reports found</p>
+                <p class="slds-text-body_small slds-text-color_weak">Schedule your first report using the form above</p>
+            </div>
+
+            <!-- Scheduled Reports List -->
+            <div if:true={hasScheduledReports} class="scheduled-reports-container">
+    <template for:each={scheduledReports} for:item="schedule">
+        <div key={schedule.id} class="schedule-card slds-m-bottom_medium">
+            <div class="slds-grid slds-gutters">
+                <!-- Report Info -->
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_2-of-3">
+                    <div class="slds-media">
+                        <div class="slds-media__figure">
+                            <lightning-icon icon-name="standard:report" size="medium"></lightning-icon>
+                        </div>
+                        <div class="slds-media__body">
+                            <h3 class="slds-text-heading_small slds-m-bottom_x-small">
+                                <lightning-formatted-text value={schedule.reportName}></lightning-formatted-text>
+                                
+                            </h3>
+                            <div class="schedule-details">
+                                <div class="slds-grid slds-gutters_small slds-wrap">
+                                    
+                                    <!-- Scheduled By -->
+                                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                        <div class="detail-item slds-grid slds-align-start">
+                                            <lightning-icon icon-name="utility:user" size="x-small" class="detail-icon"></lightning-icon>
+                                            <div class="slds-m-left_x-small">
+                                                <strong class="detail-label">Scheduled By:</strong><br>
+                                                
+                                                <span class="detail-value">{schedule.scheduledBy}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Schedule Time -->
+                                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                        <div class="detail-item slds-grid slds-align-start">
+                                            <lightning-icon icon-name="utility:clock" size="x-small" class="detail-icon"></lightning-icon>
+                                            <div class="slds-m-left_x-small">
+                                                <strong class="detail-label">Schedule Time:</strong><br>
+                                                <span class="detail-value">{schedule.scheduleTime}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Schedule Type -->
+                                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                        <div class="detail-item slds-grid slds-align-start">
+                                            <lightning-icon icon-name="utility:recurring_exception" size="x-small" class="detail-icon"></lightning-icon>
+                                            <div class="slds-m-left_x-small">
+                                                <strong class="detail-label">Schedule Type:</strong><br>
+                                                <span class="detail-value">{schedule.scheduleType}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Recipients -->
+                                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                                        <div class="detail-item slds-grid slds-align-start">
+                                            <lightning-icon icon-name="utility:email" size="x-small" class="detail-icon"></lightning-icon>
+                                            <div class="slds-m-left_x-small">
+                                                <strong class="detail-label">Recipients:</strong><br>
+                                                <span class="detail-value">{schedule.recipientCount} recipients</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Email Recipients Pills 
+                                <div class="slds-m-top_small">
+                                    <div class="slds-text-body_small slds-text-color_weak slds-m-bottom_xx-small">Email Recipients:</div>
+                                    <div class="recipients-pills">
+                                        <template for:each={schedule.emailRecipients} for:item="email">
+                                            <lightning-pill
+                                                key={email}
+                                                label={email}
+                                                class="slds-m-right_xx-small slds-m-bottom_xx-small">
+                                            </lightning-pill>
+                                        </template>
+                                    </div>
+                                </div>-->
+
+                                <!-- Next Fire Time -->
+                                <div if:true={schedule.nextFireTime} class="slds-m-top_small">
+                                    <div class="next-fire-time slds-grid slds-align-start">
+                                        <lightning-icon icon-name="utility:forward" size="x-small" class="detail-icon"></lightning-icon>
+                                        <div class="slds-m-left_x-small">
+                                            <span class="detail-label">Next Execution:</span>
+                                            <span class="detail-value">
+                                                <lightning-formatted-date-time 
+                                                    value={schedule.nextFireTime}
+                                                    year="numeric"
+                                                    month="short"
+                                                    day="2-digit"
+                                                    hour="2-digit"
+                                                    minute="2-digit">
+                                                </lightning-formatted-date-time>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                    <div class="slds-text-align_right">
+                        <div class="schedule-status">
+                            <lightning-badge 
+                                label={schedule.status}
+                                variant={schedule.statusVariant}
+                                class="slds-m-bottom_small">
+                            </lightning-badge>
+                        </div>
+                       <lightning-button
+    variant="destructive"
+    label="Delete"
+    icon-name="utility:delete"
+    onclick={handleDeleteSchedule}
+    data-schedule-id={schedule.id}
+    class="slds-m-left_small">
+</lightning-button>
+                            
+                       
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+</div>
+
+
+        </div>
+    </lightning-card>
+</template>
