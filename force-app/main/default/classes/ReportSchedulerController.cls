@@ -16,56 +16,59 @@ public with sharing class ReportSchedulerController {
         }
     }
     
-    @AuraEnabled
-    public static String scheduleReportEmail(String scheduleData) {
-        try {
-            // Parse the schedule data
-            Map<String, Object> dataMap = (Map<String, Object>) JSON.deserializeUntyped(scheduleData);
-            
-            String reportId = (String) dataMap.get('reportId');
-            List<Object> emailAddressesObj = (List<Object>) dataMap.get('emailAddresses');
-            String scheduleType = (String) dataMap.get('scheduleType');
-            String scheduleDay = (String) dataMap.get('scheduleDay');
-            String scheduleTime = (String) dataMap.get('scheduleTime');
-            String emailSubject = (String) dataMap.get('emailSubject');
-            
-            // Convert email addresses to List<String>
-            List<String> emailAddresses = new List<String>();
-            for (Object emailObj : emailAddressesObj) {
-                emailAddresses.add((String) emailObj);
-            }
-            
-            // Create or update the scheduled job
-            String jobId = createScheduledJob(reportId, emailAddresses, scheduleType, scheduleDay, scheduleTime, emailSubject);
-            
-            // Store the schedule configuration for future reference
-            saveScheduleConfiguration(reportId, emailAddresses, scheduleType, scheduleDay, scheduleTime, emailSubject, jobId);
-            
-            return 'SUCCESS';
-            
-        } catch (Exception e) {
-            System.debug('Error scheduling report email: ' + e.getMessage());
-            throw new AuraHandledException('Error scheduling report email: ' + e.getMessage());
+    // Updated method calls in scheduleReportEmail
+@AuraEnabled
+public static String scheduleReportEmail(String scheduleData) {
+    try {
+        // Parse the schedule data
+        Map<String, Object> dataMap = (Map<String, Object>) JSON.deserializeUntyped(scheduleData);
+        
+        String reportId = (String) dataMap.get('reportId');
+        List<Object> emailAddressesObj = (List<Object>) dataMap.get('emailAddresses');
+        String scheduleType = (String) dataMap.get('scheduleType');
+        String scheduleDay = (String) dataMap.get('scheduleDay');
+        String scheduleTime = (String) dataMap.get('scheduleTime');
+        String emailSubject = (String) dataMap.get('emailSubject');
+        String emailBody = (String) dataMap.get('emailBody'); // Now using this
+        
+        // Convert email addresses to List<String>
+        List<String> emailAddresses = new List<String>();
+        for (Object emailObj : emailAddressesObj) {
+            emailAddresses.add((String) emailObj);
         }
+        
+        // Create or update the scheduled job - now passing emailBody
+        String jobId = createScheduledJob(reportId, emailAddresses, scheduleType, scheduleDay, scheduleTime, emailSubject, emailBody);
+        
+        // Store the schedule configuration for future reference - now passing emailBody
+        saveScheduleConfiguration(reportId, emailAddresses, scheduleType, scheduleDay, scheduleTime, emailSubject, emailBody, jobId);
+        
+        return 'SUCCESS';
+        
+    } catch (Exception e) {
+        System.debug('Error scheduling report email: ' + e.getMessage());
+        throw new AuraHandledException('Error scheduling report email: ' + e.getMessage());
     }
+}
+
+// Updated createScheduledJob method in ReportSchedulerController.cls
+private static String createScheduledJob(String reportId, List<String> emailAddresses, String scheduleType, 
+                                       String scheduleDay, String scheduleTime, String emailSubject, String emailBody) {
     
-    private static String createScheduledJob(String reportId, List<String> emailAddresses, String scheduleType, 
-                                           String scheduleDay, String scheduleTime, String emailSubject) {
-        
-        // Generate cron expression based on schedule type
-        String cronExpression = generateCronExpression(scheduleType, scheduleDay, scheduleTime);
-        
-        // Create the schedulable job
-        ReportEmailSchedulable schedulableJob = new ReportEmailSchedulable(reportId, emailAddresses, emailSubject);
-        
-        // Generate a unique job name that includes the report ID and recipient count
-        String jobName = 'Report Email - ' + reportId + ' - ' + emailSubject + ' - ' + emailAddresses.size() + ' recipients - ' + System.now().getTime();
-        
-        // Schedule the job
-        String jobId = System.schedule(jobName, cronExpression, schedulableJob);
-        
-        return jobId;
-    }
+    // Generate cron expression based on schedule type
+    String cronExpression = generateCronExpression(scheduleType, scheduleDay, scheduleTime);
+    
+    // Create the schedulable job with email body
+    ReportEmailSchedulable schedulableJob = new ReportEmailSchedulable(reportId, emailAddresses, emailSubject, emailBody);
+    
+    // Generate a unique job name that includes the report ID and recipient count
+    String jobName = 'Report Email - ' + reportId + ' - ' + emailSubject + ' - ' + emailAddresses.size() + ' recipients - ' + System.now().getTime();
+    
+    // Schedule the job
+    String jobId = System.schedule(jobName, cronExpression, schedulableJob);
+   
+    return jobId;
+}
     
     private static String generateCronExpression(String scheduleType, String scheduleDay, String scheduleTime) {
         // Parse time (format: HH:mm)
@@ -108,40 +111,48 @@ public with sharing class ReportSchedulerController {
         return dayMap.get(dayName);
     }
     
-    private static void saveScheduleConfiguration(String reportId, List<String> emailAddresses, String scheduleType, 
-                                                String scheduleDay, String scheduleTime, String emailSubject, String jobId) {
-        try {
-            // You can save this to a custom object for tracking
-            // For now, just log the configuration
-            System.debug('Schedule Configuration Saved:');
-            System.debug('Report ID: ' + reportId);
-            System.debug('Email Addresses: ' + String.join(emailAddresses, ', '));
-            System.debug('Schedule Type: ' + scheduleType);
-            System.debug('Schedule Day: ' + scheduleDay);
-            System.debug('Schedule Time: ' + scheduleTime);
-            System.debug('Email Subject: ' + emailSubject);
-            System.debug('Job ID: ' + jobId);
-            
-            // Optional: Insert into a custom object to track scheduled jobs
-            /*
-            Report_Schedule__c scheduleRecord = new Report_Schedule__c(
-                Report_Id__c = reportId,
-                Email_Addresses__c = String.join(emailAddresses, ';'),
-                Schedule_Type__c = scheduleType,
-                Schedule_Day__c = scheduleDay,
-                Schedule_Time__c = scheduleTime,
-                Email_Subject__c = emailSubject,
-                Job_Id__c = jobId,
-                Is_Active__c = true
-            );
-            insert scheduleRecord;
-            */
-            
-        } catch (Exception e) {
-            System.debug('Error saving schedule configuration: ' + e.getMessage());
-        }
-    }
     
+ private static void saveScheduleConfiguration(String reportId, List<String> emailAddresses, String scheduleType, 
+                                            String scheduleDay, String scheduleTime, String emailSubject, String emailBody, String jobId) {
+    try {
+        // Get report name for better display
+        String reportName = 'Unknown Report';
+        try {
+            List<Report> reports = [SELECT Id, Name FROM Report WHERE Id = :reportId LIMIT 1];
+            if (!reports.isEmpty()) {
+                reportName = reports[0].Name;
+            }
+        } catch (Exception e) {
+            System.debug('Error fetching report name: ' + e.getMessage());
+        }
+        
+        // Calculate next fire time
+        DateTime nextFireTime = calculateNextFireTime(scheduleType, scheduleDay, scheduleTime);
+        
+        // Create and insert the schedule record
+        Report_Schedule__c scheduleRecord = new Report_Schedule__c(
+            Report_Id__c = reportId,
+            Report_Name__c = reportName,
+            Email_Addresses__c = String.join(emailAddresses, ';'),
+            Schedule_Type__c = scheduleType,
+            Schedule_Day__c = scheduleDay,
+            Schedule_Time__c = scheduleTime,
+            Email_Subject__c = emailSubject,
+            Email_Body__c = emailBody, // Add this field to your custom object
+            Job_Id__c = jobId,
+            Is_Active__c = true,
+            Next_Fire_Time__c = nextFireTime
+        );
+        insert scheduleRecord;
+        
+        System.debug('Schedule configuration saved successfully: ' + scheduleRecord.Id);
+        
+    } catch (Exception e) {
+        System.debug('Error saving schedule configuration: ' + e.getMessage());
+        throw new AuraHandledException('Error saving schedule configuration: ' + e.getMessage());
+    }
+}
+
     @AuraEnabled
     public static List<Map<String, Object>> getScheduledJobs() {
         try {
@@ -159,7 +170,10 @@ public with sharing class ReportSchedulerController {
             
             for (CronTrigger job : cronJobs) {
                 Map<String, Object> jobInfo = new Map<String, Object>();
-                jobInfo.put('id', job.Id);
+                jobInfo.put('id', String.valueOf(job.Id).substring(0, 15)); // ✅ Correct
+
+                //jobInfo.put('id', job.Id);
+            
                 jobInfo.put('name', job.CronJobDetail.Name);
                 jobInfo.put('cronExpression', job.CronExpression);
                 jobInfo.put('state', job.State);
@@ -181,7 +195,257 @@ public with sharing class ReportSchedulerController {
             throw new AuraHandledException('Error fetching scheduled jobs: ' + e.getMessage());
         }
     }
-    
+@AuraEnabled
+public static Map<String, Object> getScheduleById(String scheduleId) {
+    try {
+        List<Report_Schedule__c> schedules = [
+            SELECT Id, Report_Id__c, Report_Name__c, Email_Addresses__c, Schedule_Type__c, 
+                   Schedule_Day__c, Schedule_Time__c, Email_Subject__c, Job_Id__c,Email_Body__c,
+                   Next_Fire_Time__c
+            FROM Report_Schedule__c 
+            WHERE  Job_Id__c = :scheduleId AND Is_Active__c = true
+            LIMIT 1
+        ];
+       
+        if (schedules.isEmpty()) {
+             
+            throw new AuraHandledException('Schedule not found');
+        }
+        
+        Report_Schedule__c schedule = schedules[0];
+        
+        Map<String, Object> scheduleData = new Map<String, Object>();
+        scheduleData.put('id', schedule.Id);
+         
+        scheduleData.put('reportId', schedule.Report_Id__c);
+        scheduleData.put('emailAddresses', schedule.Email_Addresses__c.split(';'));
+        scheduleData.put('scheduleType', schedule.Schedule_Type__c);
+        scheduleData.put('scheduleDay', schedule.Schedule_Day__c);
+        scheduleData.put('scheduleTime', schedule.Schedule_Time__c);
+        scheduleData.put('emailSubject', schedule.Email_Subject__c);
+        scheduleData.put('jobId', schedule.Job_Id__c);
+        scheduleData.put('emailBody', schedule.Email_Body__c);
+
+
+        
+        return scheduleData;
+       
+    } catch (Exception e) {
+        throw new AuraHandledException('Error fetching schedule: ' + e.getMessage());
+    }
+}
+
+@AuraEnabled
+public static String updateSchedule(String scheduleId, String scheduleData) {
+    try {
+        // Parse the schedule data
+        Map<String, Object> dataMap = (Map<String, Object>) JSON.deserializeUntyped(scheduleData);
+        
+        String reportId = (String) dataMap.get('reportId');
+        List<Object> emailAddressesObj = (List<Object>) dataMap.get('emailAddresses');
+        String scheduleType = (String) dataMap.get('scheduleType');
+        String scheduleDay = (String) dataMap.get('scheduleDay');
+        String scheduleTime = (String) dataMap.get('scheduleTime');
+        String emailSubject = (String) dataMap.get('emailSubject');
+        String emailBody = (String) dataMap.get('emailBody'); // Now using this
+        
+        // Convert email addresses to List<String>
+        List<String> emailAddresses = new List<String>();
+        for (Object emailObj : emailAddressesObj) {
+            emailAddresses.add((String) emailObj);
+        }
+        
+        // Get existing schedule
+        List<Report_Schedule__c> existingSchedules = [
+            SELECT Id, Job_Id__c
+            FROM Report_Schedule__c 
+            WHERE Job_Id__c = :scheduleId AND Is_Active__c = true
+            LIMIT 1
+        ];
+        
+        if (existingSchedules.isEmpty()) {
+            throw new AuraHandledException('Schedule not found');
+        }
+        
+        Report_Schedule__c existingSchedule = existingSchedules[0];
+        
+        // Delete the old scheduled job
+        if (String.isNotBlank(existingSchedule.Job_Id__c)) {
+            try {
+                System.abortJob(existingSchedule.Job_Id__c);
+            } catch (Exception e) {
+                System.debug('Error aborting old job: ' + e.getMessage());
+            }
+        }
+        
+        String recordId = existingSchedule.Id;
+        
+        // Create new scheduled job - now passing emailBody
+        String newJobId = createScheduledJob(reportId, emailAddresses, scheduleType, scheduleDay, scheduleTime, emailSubject, emailBody);
+        
+        // Update the schedule record - now passing emailBody
+        updateScheduleRecord(recordId, reportId, emailAddresses, scheduleType, scheduleDay, scheduleTime, emailSubject, emailBody, newJobId);
+        
+        return 'SUCCESS';
+        
+    } catch (Exception e) {
+        System.debug('Error updating schedule: ' + e.getMessage());
+        throw new AuraHandledException('Error updating schedule: ' + e.getMessage());
+    }
+}
+
+@AuraEnabled
+public static String deleteScheduledJob(String jobId) {
+    try {
+       
+        // Get the schedule record
+        List<Report_Schedule__c> schedules = [
+            SELECT Id, Job_Id__c
+            FROM Report_Schedule__c 
+            WHERE Job_Id__c = :jobId AND Is_Active__c = true
+            LIMIT 1
+        ];
+        
+        if (schedules.isEmpty()) {
+            throw new AuraHandledException('Schedule not found');
+        }
+        
+        Report_Schedule__c schedule = schedules[0];
+        system.debug('delete Id '+schedule.Job_Id__c);
+                
+        // Abort the scheduled job
+        if (String.isNotBlank(schedule.Job_Id__c)) {
+            try {
+                
+                System.abortJob(schedule.Job_Id__c);
+            } catch (Exception e) {
+                System.debug('Error aborting job: ' + e.getMessage());
+            }
+        }
+        
+        // Mark schedule as inactive (soft delete)
+        schedule.Is_Active__c = false;
+        delete schedule;
+        
+        return 'Schedule deleted successfully';
+        
+    } catch (Exception e) {
+        System.debug('Error deleting schedule: ' + e.getMessage());
+        throw new AuraHandledException('Error deleting schedule: ' + e.getMessage());
+    }
+}
+
+// HELPER METHODS:
+
+// Updated updateScheduleRecord method
+private static void updateScheduleRecord(String recordId, String reportId, List<String> emailAddresses, 
+                                       String scheduleType, String scheduleDay, String scheduleTime, 
+                                       String emailSubject, String emailBody, String jobId) {
+    try {
+        // Get report name
+        String reportName = 'Unknown Report';
+        try {
+            List<Report> reports = [SELECT Id, Name FROM Report WHERE Id = :reportId LIMIT 1];
+            if (!reports.isEmpty()) {
+                reportName = reports[0].Name;
+            }
+        } catch (Exception e) {
+            System.debug('Error fetching report name: ' + e.getMessage());
+        }
+        
+        // Calculate next fire time
+        DateTime nextFireTime = calculateNextFireTime(scheduleType, scheduleDay, scheduleTime);
+        
+        // Update the schedule record
+        Report_Schedule__c scheduleRecord = new Report_Schedule__c(
+            Id = recordId,
+            Report_Id__c = reportId,
+            Report_Name__c = reportName,
+            Email_Addresses__c = String.join(emailAddresses, ';'),
+            Schedule_Type__c = scheduleType,
+            Schedule_Day__c = scheduleDay,
+            Schedule_Time__c = scheduleTime,
+            Email_Subject__c = emailSubject,
+            Email_Body__c = emailBody, // Add this field to your custom object
+            Job_Id__c = jobId,
+            Next_Fire_Time__c = nextFireTime
+        );
+        update scheduleRecord;
+        
+    } catch (Exception e) {
+        System.debug('Error updating schedule record: ' + e.getMessage());
+        throw new AuraHandledException('Error updating schedule record: ' + e.getMessage());
+    }
+}
+
+private static DateTime calculateNextFireTime(String scheduleType, String scheduleDay, String scheduleTime) {
+    try {
+        // Parse time
+        String[] timeParts = scheduleTime.split(':');
+        Integer hour = Integer.valueOf(timeParts[0]);
+        Integer minute = Integer.valueOf(timeParts[1]);
+        
+        DateTime now = DateTime.now();
+        DateTime nextFire = null;
+        
+        if (scheduleType == 'Daily') {
+            nextFire = DateTime.newInstance(now.date(), Time.newInstance(hour, minute, 0, 0));
+            if (nextFire <= now) {
+                nextFire = nextFire.addDays(1);
+            }
+        } else if (scheduleType == 'Weekly') {
+            // Get target day of week (1=Sunday, 2=Monday, etc.)
+            Integer targetDayOfWeek = Integer.valueOf(getDayOfWeekNumber(scheduleDay));
+            Date today = now.date();
+            Integer currentDayOfWeek = Math.mod(Date.newInstance(1900, 1, 7).daysBetween(today), 7) + 1;
+            
+            Integer daysToAdd = targetDayOfWeek - currentDayOfWeek;
+            if (daysToAdd < 0) daysToAdd += 7;
+            
+            nextFire = DateTime.newInstance(today.addDays(daysToAdd), Time.newInstance(hour, minute, 0, 0));
+            if (nextFire <= now) {
+                nextFire = nextFire.addDays(7);
+            }
+        } else if (scheduleType == 'Monthly') {
+            // Simplified monthly calculation
+            Date today = now.date();
+            Integer targetDay = scheduleDay.equals('Last') ? Date.daysInMonth(today.year(), today.month()) : Integer.valueOf(scheduleDay);
+            
+            nextFire = DateTime.newInstance(Date.newInstance(today.year(), today.month(), targetDay), Time.newInstance(hour, minute, 0, 0));
+            if (nextFire <= now) {
+                // Move to next month
+                nextFire = nextFire.addMonths(1);
+            }
+        }
+        
+        return nextFire;
+        
+    } catch (Exception e) {
+        System.debug('Error calculating next fire time: ' + e.getMessage());
+        return DateTime.now().addHours(1); // Default to 1 hour from now
+    }
+}
+
+private static String getStatusVariant(String state) {
+    switch on state {
+        when 'WAITING', 'ACQUIRED' {
+            return 'success';
+        }
+        when 'EXECUTING' {
+            return 'warning';
+        }
+        when 'COMPLETE' {
+            return 'success';
+        }
+        when else {
+            return 'error';
+        }
+    }
+}
+
+
+
+//Existing
     private static Map<String, Object> parseJobDetails(String jobName) {
         Map<String, Object> details = new Map<String, Object>();
         
@@ -246,7 +510,7 @@ public with sharing class ReportSchedulerController {
         }
     }
     
-    @AuraEnabled
+    /*@AuraEnabled
     public static String deleteScheduledJob(String jobId) {
         try {
             System.debug(jobId);
@@ -256,5 +520,5 @@ public with sharing class ReportSchedulerController {
             System.debug('Error Deleting schedule class: ' + e.getMessage());
             throw new AuraHandledException('Error deleting scheduled job: ' + e.getMessage());
         }
-    }
+    }*/
 }

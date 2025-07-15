@@ -6,16 +6,19 @@ import getReports from '@salesforce/apex/ReportSchedulerController.getReports';
 import scheduleReportEmail from '@salesforce/apex/ReportSchedulerController.scheduleReportEmail';
 import getScheduledJobs from '@salesforce/apex/ReportSchedulerController.getScheduledJobs';
 import deleteScheduledJob from '@salesforce/apex/ReportSchedulerController.deleteScheduledJob';
+import getScheduleById from '@salesforce/apex/ReportSchedulerController.getScheduleById';
+import updateSchedule from '@salesforce/apex/ReportSchedulerController.updateSchedule';
 
 export default class ReportEmailScheduler extends LightningElement {
     @track selectedReportId = '';
-    
+      @track showAdvanced = false;
     @track currentEmail = '';
     @track emailList = [];
     @track selectedScheduleType = 'Daily';
     @track selectedDay = '';
     @track selectedTime = '09:00';
     @track emailSubject = '';
+    @track emailBody = '';
     @track reportOptions = [];
     @track statusMessage = '';
     @track showStatus = false;
@@ -25,6 +28,11 @@ export default class ReportEmailScheduler extends LightningElement {
     @track currentUserId = '';
     @track currentUserName = '';
     @track reportNameMap = new Map(); // Store report ID to name mapping
+    
+    // Edit mode properties
+    @track isEditMode = false;
+    @track editingScheduleId = '';
+    @track editingScheduleData = {};
 
     // Schedule type options
     scheduleTypeOptions = [
@@ -148,6 +156,19 @@ export default class ReportEmailScheduler extends LightningElement {
                (this.showDaySelection && !this.selectedDay);
     }
 
+    // New computed properties for edit mode
+    get cardTitle() {
+        return this.isEditMode ? 'Edit Scheduled Report' : 'Schedule Report Email';
+    }
+
+    get submitButtonLabel() {
+        return this.isEditMode ? 'Update Schedule' : 'Schedule Report';
+    }
+
+    get cancelButtonLabel() {
+        return this.isEditMode ? 'Cancel Edit' : 'Cancel';
+    }
+
     // Event handlers
     handleReportChange(event) {
         this.selectedReportId = event.detail.value;
@@ -177,7 +198,14 @@ export default class ReportEmailScheduler extends LightningElement {
     handleSubjectChange(event) {
         this.emailSubject = event.target.value;
     }
+    
 
+handleBodyChange(event) {
+    this.emailBody = event.target.value;
+} 
+ handleToggleChange(event) {
+        this.showAdvanced = event.target.checked;
+    }
     addEmail() {
         if (this.currentEmail && this.isValidEmail(this.currentEmail)) {
             if (!this.emailList.includes(this.currentEmail)) {
@@ -200,6 +228,12 @@ export default class ReportEmailScheduler extends LightningElement {
 
     handleCancel() {
         this.resetForm();
+        this.exitEditMode();
+    }  closeEditModal() {
+        this.resetForm();
+        this.exitEditMode();
+        this.isEditMode = false;
+                this.clearStatus();
     }
 
     handleSchedule() {
@@ -208,13 +242,23 @@ export default class ReportEmailScheduler extends LightningElement {
             return;
         }
 
+        if (this.isEditMode) {
+            this.updateExistingSchedule();
+        } else {
+            this.createNewSchedule();
+        }
+    }
+
+    // New method to handle creating new schedule
+    createNewSchedule() {
         const scheduleData = {
             reportId: this.selectedReportId,
             emailAddresses: this.emailList,
             scheduleType: this.selectedScheduleType,
             scheduleDay: this.selectedDay,
             scheduleTime: this.selectedTime,
-            emailSubject: this.emailSubject || this.generateDefaultSubject()
+            emailSubject: this.emailSubject || this.generateDefaultSubject(),
+             emailBody: this.emailBody || ''
         };
 
         scheduleReportEmail({ scheduleData: JSON.stringify(scheduleData) })
@@ -222,7 +266,6 @@ export default class ReportEmailScheduler extends LightningElement {
                 this.showToast('Success', 'Report email scheduled successfully', 'success');
                 this.showStatusMessage('Report email scheduled successfully!', 'slds-text-color_success');
                 this.resetForm();
-                // Refresh the scheduled reports list
                 this.loadScheduledReports();
             })
             .catch(error => {
@@ -230,6 +273,95 @@ export default class ReportEmailScheduler extends LightningElement {
                 this.showToast('Error', 'Failed to schedule report email', 'error');
                 this.showStatusMessage('Failed to schedule report email. Please try again.', 'slds-text-color_error');
             });
+    }
+
+    // New method to handle updating existing schedule
+    updateExistingSchedule() {
+        const scheduleData = {
+            reportId: this.selectedReportId,
+            emailAddresses: this.emailList,
+            scheduleType: this.selectedScheduleType,
+            scheduleDay: this.selectedDay,
+            scheduleTime: this.selectedTime,
+            emailSubject: this.emailSubject || this.generateDefaultSubject(),
+              emailBody: this.emailBody || ''
+        };
+
+        updateSchedule({ 
+            scheduleId: this.editingScheduleId, 
+            scheduleData: JSON.stringify(scheduleData) 
+        })
+            .then(result => {
+                this.showToast('Success', 'Schedule updated successfully', 'success');
+                this.showStatusMessage('Schedule updated successfully!', 'slds-text-color_success');
+                this.resetForm();
+                this.exitEditMode();
+                this.loadScheduledReports();
+            })
+            .catch(error => {
+                console.error('Error updating schedule:', error);
+                this.showToast('Error', 'Failed to update schedule', 'error');
+                this.showStatusMessage('Failed to update schedule. Please try again.', 'slds-text-color_error');
+            });
+    }
+
+    // New method to handle edit button click
+    handleEditSchedule(event) {
+        const scheduleId = event.target.dataset.scheduleId;
+        if (scheduleId && scheduleId.length > 15) {
+        scheduleId = scheduleId.substring(0, 15);
+    }
+        console.log('schduel Iddd',scheduleId);
+        if (!scheduleId) {
+            console.error('Schedule ID not found');
+            return;
+        }
+
+        this.loadScheduleForEdit(scheduleId);
+    }
+
+    // New method to load schedule data for editing
+    loadScheduleForEdit(scheduleId) {
+        getScheduleById({ scheduleId: scheduleId })
+            .then(result => {
+                this.editingScheduleId = scheduleId;
+                this.editingScheduleData = result;
+                
+                // Populate form with existing data
+                this.selectedReportId = result.reportId;
+                this.emailList = result.emailAddresses || [];
+                this.selectedScheduleType = result.scheduleType;
+                this.selectedDay = result.scheduleDay || '';
+                this.selectedTime = result.scheduleTime;
+                this.emailSubject = result.emailSubject || '';
+                this.emailBody = result.emailBody || '';
+
+                
+                this.isEditMode = true;
+                this.clearStatus();
+                
+                // Scroll to form
+                this.scrollToForm();
+            })
+            .catch(error => {
+                console.error('Error loading schedule for edit:', error);
+                this.showToast('Error', 'Failed to load schedule data for edit', 'error');
+            });
+    }
+
+    // New method to exit edit mode
+    exitEditMode() {
+        this.isEditMode = false;
+        this.editingScheduleId = '';
+        this.editingScheduleData = {};
+    }
+
+    // New method to scroll to form
+    scrollToForm() {
+        const formElement = this.template.querySelector('lightning-card');
+        if (formElement) {
+            formElement.scrollIntoView({ behavior: 'smooth' });
+        }
     }
 
     // Scheduled Reports Management Methods
@@ -266,19 +398,7 @@ export default class ReportEmailScheduler extends LightningElement {
     }
 
     parseEmailRecipients(jobName) {
-        // Since we can't reliably extract email addresses from the job name,
-        // we'll return a placeholder count. In a real implementation, you'd store
-        // this information in a custom object.
-        
-        // For now, we'll try to extract some information from the job name
-        // and return a reasonable recipient count based on the job structure
-        
-        // You could also modify the Apex controller to include recipient information
-        // in the job details returned from getScheduledJobs()
-        
-        // Temporary solution: return a default array with one recipient
-        // This should be replaced with actual recipient data storage
-        return ['Recipients not stored']; // This will show as "1 recipients"
+        return ['Recipients not stored'];
     }
 
     parseScheduleTime(cronExpression) {
@@ -339,7 +459,10 @@ export default class ReportEmailScheduler extends LightningElement {
     handleDeleteSchedule(event) {
         const scheduleId = event.target.dataset.scheduleId;
         
-        console.log("Schedule ID to delete:", scheduleId);
+           if (scheduleId && scheduleId.length > 15) {
+        scheduleId = scheduleId.substring(0, 15);
+    }
+        
         
         if (!scheduleId) {
             console.error('Schedule ID not found');
@@ -352,13 +475,13 @@ export default class ReportEmailScheduler extends LightningElement {
     viewScheduleDetails(scheduleId) {
         const schedule = this.scheduledReports.find(s => s.id === scheduleId);
         if (schedule) {
-            // You can implement a modal or navigate to detail page
             this.showToast('Info', `Viewing details for: ${schedule.reportName}`, 'info');
         }
     }
 
     deleteSchedule(scheduleId) {
         if (confirm('Are you sure you want to delete this scheduled report?')) {
+console.log("Schedule ID  delete:", scheduleId);
             deleteScheduledJob({ jobId: scheduleId })
                 .then(result => {
                     this.showToast('Success', 'Scheduled report deleted successfully', 'success');
@@ -372,8 +495,6 @@ export default class ReportEmailScheduler extends LightningElement {
     }
 
     getCurrentUserInfo() {
-        // Get current user info - this is a simplified version
-        // In a real implementation, you'd call an Apex method to get user details
         this.currentUserId = 'CurrentUserId';
         this.currentUserName = 'Current User';
     }
@@ -398,6 +519,8 @@ export default class ReportEmailScheduler extends LightningElement {
         this.selectedDay = '';
         this.selectedTime = '09:00';
         this.emailSubject = '';
+         this.emailBody = '';
+
         this.clearStatus();
     }
 

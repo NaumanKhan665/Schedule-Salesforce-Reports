@@ -118,8 +118,17 @@
                     </lightning-input>
                 </div>
             </div>
-
+                                    <!-- Advanced Options Toggle -->
+         <div class="slds-form-element slds-m-bottom_medium">
+          <lightning-input
+        type="checkbox"
+        label="Show Advanced Options"
+        checked={showAdvanced}
+        onchange={handleToggleChange}>
+    </lightning-input>
+              </div>
             <!-- Email Subject -->
+              <template if:true={showAdvanced}>
             <div class="slds-form-element slds-m-bottom_medium">
                 <label class="slds-form-element__label">
                     Email Subject
@@ -135,6 +144,19 @@
                     </lightning-input>
                 </div>
             </div>
+            <!-- Email Body -->
+                    <div class="slds-form-element slds-m-bottom_medium">
+                   <label class="slds-form-element__label">Email Body</label>
+                <div class="slds-form-element__control">
+                  <lightning-textarea
+                     name="emailBody"
+                placeholder="Enter email body (optional)"
+            value={emailBody}
+            onchange={handleBodyChange}>
+                </lightning-textarea>
+                  </div>
+               </div></template>
+
 
             <!-- Status Section -->
             <div if:true={showStatus} class="slds-m-bottom_medium">
@@ -308,7 +330,15 @@
     data-schedule-id={schedule.id}
     class="slds-m-left_small">
 </lightning-button>
-                            
+                      <lightning-button
+    variant="brand-outline"
+    label="Edit"
+    icon-name="utility:edit"
+    onclick={handleEditSchedule}
+    data-schedule-id={schedule.id}
+    class="slds-m-left_small">
+</lightning-button>
+      
                        
                     </div>
                 </div>
@@ -319,5 +349,154 @@
 
 
         </div>
+        
+    <template if:true={isEditMode}>
+    <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open">
+        <div class="slds-modal__container">
+            <!-- Modal Header -->
+            <header class="slds-modal__header">
+                <h2 class="slds-modal__title slds-hyphenate">Edit Scheduled Report</h2>
+            </header>
+
+            <!-- Modal Body -->
+            <div class="slds-modal__content slds-p-around_medium">
+                <!-- Report Selection -->
+                <div class="slds-form-element slds-m-bottom_medium">
+                    <label class="slds-form-element__label">Select Report</label>
+                    <div class="slds-form-element__control">
+                        <lightning-combobox
+                            name="editReportSelector"
+                            value={selectedReportId}
+                            placeholder="Choose a report..."
+                            options={reportOptions}
+                            onchange={handleReportChange}
+                            required>
+                        </lightning-combobox>
+                    </div>
+                </div>
+                              <!-- Recipients Section -->
+            <div class="slds-form-element slds-m-bottom_medium">
+                <label class="slds-form-element__label">
+                    <abbr class="slds-required" title="required">*</abbr>
+                    Email Recipients
+                </label>
+                <div class="slds-form-element__control">
+                    <lightning-input
+                        type="email"
+                        name="emailInput"
+                        placeholder="Enter email address"
+                        value={currentEmail}
+                        onchange={handleEmailInputChange}
+                        class="slds-m-bottom_x-small">
+                    </lightning-input>
+                    <lightning-button
+                        label="Add Email"
+                        variant="brand"
+                        onclick={addEmail}
+                        disabled={isAddEmailDisabled}
+                        class="slds-m-bottom_small">
+                    </lightning-button>
+                </div>
+                
+                <!-- Email Pills -->
+                <div if:true={hasEmails} class="slds-m-top_small">
+                    <template for:each={emailList} for:item="email">
+                        <lightning-pill
+                            key={email}
+                            label={email}
+                            name={email}
+                            onremove={removeEmail}
+                            class="slds-m-right_x-small slds-m-bottom_x-small">
+                        </lightning-pill>
+                    </template>
+                </div>
+            </div>
+
+                <!-- Schedule Type -->
+                <div class="slds-form-element slds-m-bottom_medium">
+                    <label class="slds-form-element__label">Schedule Type</label>
+                    <div class="slds-form-element__control">
+                        <lightning-radio-group
+                            name="editScheduleType"
+                            options={scheduleTypeOptions}
+                            value={selectedScheduleType}
+                            onchange={handleScheduleTypeChange}
+                            type="radio">
+                        </lightning-radio-group>
+                    </div>
+                </div>
+
+                <!-- Day Selector (if Weekly or Monthly) -->
+                <template if:true={showDaySelection}>
+                    <div class="slds-form-element slds-m-bottom_medium">
+                        <label class="slds-form-element__label">{daySelectionLabel}</label>
+                        <div class="slds-form-element__control">
+                            <lightning-combobox
+                                name="editDaySelector"
+                                value={selectedDay}
+                                placeholder={daySelectionPlaceholder}
+                                options={dayOptions}
+                                onchange={handleDayChange}
+                                required>
+                            </lightning-combobox>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Time -->
+                <div class="slds-form-element slds-m-bottom_medium">
+                    <label class="slds-form-element__label">Schedule Time</label>
+                    <div class="slds-form-element__control">
+                        <lightning-input
+                            type="time"
+                            name="editTime"
+                            value={selectedTime}
+                            onchange={handleTimeChange}
+                            required>
+                        </lightning-input>
+                    </div>
+                </div>
+  
+
+         
+                <!-- Email Subject -->
+                <div class="slds-form-element slds-m-bottom_medium">
+                    <label class="slds-form-element__label">Email Subject</label>
+                    <div class="slds-form-element__control">
+                        <lightning-input
+                            type="text"
+                            name="editEmailSubject"
+                            value={emailSubject}
+                            onchange={handleSubjectChange}>
+                        </lightning-input>
+                    </div>
+                </div>
+           
+               <!-- Email Body -->
+                    <div class="slds-form-element slds-m-bottom_medium">
+                   <label class="slds-form-element__label">Email Body</label>
+                <div class="slds-form-element__control">
+                  <lightning-textarea
+                     name="EditemailBody"
+                placeholder="Enter email body (optional)"
+            value={emailBody}
+            onchange={handleBodyChange}>
+                </lightning-textarea>
+                  </div>
+               </div>
+               
+             </div>
+            <!-- Modal Footer -->
+            <footer class="slds-modal__footer">
+                <lightning-button variant="neutral" label="Cancel" onclick={closeEditModal}></lightning-button>
+                <lightning-button variant="brand" label="Update Schedule" onclick={handleSchedule}></lightning-button>
+            </footer>
+           
+        </div>
+    </section>
+    <div class="slds-backdrop slds-backdrop_open"></div>
+</template>
     </lightning-card>
+
+
 </template>
