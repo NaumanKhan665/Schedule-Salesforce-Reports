@@ -20,97 +20,8 @@ export default class ReportEmailScheduler extends LightningElement {
     @track isLoading = false;
     @track showDropdown = false;
 
-       debounceTimer;
-
-    handleSearchChange(event) {
-        this.searchTerm = event.target.value;
-        this.showDropdown = false;
-        
-        // Clear previous timer
-        clearTimeout(this.debounceTimer);
-        
-        // Set new timer for debounced search
-        this.debounceTimer = setTimeout(() => {
-            if (this.searchTerm.length >= 2) {
-                this.performSearch();
-            } else {
-                this.reports = [];
-                this.showDropdown = false;
-            }
-        }, 300);
-    }
-
-    performSearch() {
-        this.isLoading = true;
-        
-        searchReports({ searchTerm: this.searchTerm })
-            .then(result => {
-                this.reports = result.map(report => ({
-                    Id: report.Id,
-                    Name: report.Name,
-                    FolderName: report.FolderName,
-                    Description: report.Description || 'No description available'
-                }));
-                this.showDropdown = this.reports.length > 0;
-                this.isLoading = false;
-            })
-            .catch(error => {
-                this.isLoading = false;
-                this.showToast('Error', 'Error searching reports: ' + error.body.message, 'error');
-            });
-    }
-
-    handleReportSelect(event) {
-        const selectedId = event.currentTarget.dataset.id;
-        const selectedReport = this.reports.find(report => report.Id === selectedId);
-        
-        if (selectedReport) {
-            this.selectedReportId = selectedReport.Id;
-            this.selectedReportName = selectedReport.Name;
-            this.searchTerm = selectedReport.Name;
-            this.showDropdown = false;
-            
-            // Dispatch custom event with selected report ID
-            const selectEvent = new CustomEvent('reportselected', {
-                detail: {
-                    selectedReportId: this.reportID,
-                    reportName: this.selectedReportName
-                }
-            });
-            this.dispatchEvent(selectEvent);
-            
-           // this.showToast('Success', `Report "${selectedReport.Name}" selected`, 'success');
-        }
-    }
-
-    handleInputFocus() {
-        if (this.reports.length > 0) {
-            this.showDropdown = true;
-        }
-    }
-
-    handleInputBlur() {
-        // Delay hiding dropdown to allow for click events
-        setTimeout(() => {
-            this.showDropdown = false;
-        }, 200);
-    }
-
-    clearSelection() {
-        this.selectedReportId = '';
-        this.selectedReportName = '';
-        this.searchTerm = '';
-        this.reports = [];
-        this.showDropdown = false;
-    }
-
- 
-
-    // Getter for displaying current selection
-    get hasSelection() {
-        return this.selectedReportId !== '';
-    }
-
+    
+@track selectedDays = []; // For weekly multi-day selection
 
     @track selectedReportId = '';
       @track showAdvanced = false;
@@ -186,6 +97,94 @@ export default class ReportEmailScheduler extends LightningElement {
         { label: '28th', value: '28' },
         { label: 'Last day', value: 'Last' }
     ];
+   debounceTimer;
+
+    handleSearchChange(event) {
+        this.searchTerm = event.target.value;
+        this.showDropdown = false;
+        
+        // Clear previous timer
+        clearTimeout(this.debounceTimer);
+        
+        // Set new timer for debounced search
+        this.debounceTimer = setTimeout(() => {
+            if (this.searchTerm.length >= 2) {
+                this.performSearch();
+            } else {
+                this.reports = [];
+                this.showDropdown = false;
+            }
+        }, 300);
+    }
+
+    performSearch() {
+        this.isLoading = true;
+        
+        searchReports({ searchTerm: this.searchTerm })
+            .then(result => {
+                this.reports = result.map(report => ({
+                    Id: report.Id,
+                    Name: report.Name,
+                    FolderName: report.FolderName,
+                    Description: report.Description || 'No description available'
+                }));
+                this.showDropdown = this.reports.length > 0;
+                this.isLoading = false;
+            })
+            .catch(error => {
+                this.isLoading = false;
+                this.showToast('Error', 'Error searching reports: ' + error.body.message, 'error');
+            });
+    }
+
+    handleReportSelect(event) {
+        const selectedId = event.currentTarget.dataset.id;
+        const selectedReport = this.reports.find(report => report.Id === selectedId);
+        
+        if (selectedReport) {
+            this.selectedReportId = selectedReport.Id;
+            this.selectedReportName = selectedReport.Name;
+            this.searchTerm = selectedReport.Name;
+            this.showDropdown = false;
+            if (this.isEditMode) {
+    this.editingScheduleData.reportId = selectedReport.Id;
+}
+            
+           // this.showToast('Success', `Report "${selectedReport.Name}" selected`, 'success');
+        }
+    }
+
+    handleInputFocus() {
+        if (this.reports.length > 0) {
+            this.showDropdown = true;
+        }
+    }
+
+    handleInputBlur() {
+        // Delay hiding dropdown to allow for click events
+        setTimeout(() => {
+            this.showDropdown = false;
+        }, 200);
+    }
+
+    clearSelection() {
+        this.selectedReportId = '';
+        this.selectedReportName = '';
+        this.searchTerm = '';
+        this.reports = [];
+        this.showDropdown = false;
+    }
+
+ 
+
+    // Getter for displaying current selection
+    get hasSelection() {
+        return this.selectedReportId !== '';
+    }
+
+    get isWeekly() {
+    return this.selectedScheduleType === 'Weekly';
+}
 
     // Wire method to get reports
     @wire(getReports)
@@ -255,8 +254,19 @@ export default class ReportEmailScheduler extends LightningElement {
         return !this.selectedReportId || 
                !this.hasEmails || 
                !this.selectedTime || 
-               (this.showDaySelection && !this.selectedDay);
+         (this.showDaySelection && (
+               (this.isWeekly
+                   ? (this.isEditMode 
+                       ? !this.selectedDay 
+                       : (!this.selectedDays || this.selectedDays.length === 0))
+                   : !this.selectedDay)
+           ));
     }
+
+    handleDaysChange(event) {
+    this.selectedDays = event.detail.value;
+    this.clearStatus();
+}
 
     // New computed properties for edit mode
     get cardTitle() {
@@ -284,6 +294,7 @@ export default class ReportEmailScheduler extends LightningElement {
     handleScheduleTypeChange(event) {
         this.selectedScheduleType = event.detail.value;
         this.selectedDay = ''; // Reset day selection when schedule type changes
+         this.selectedDays = [];
         this.clearStatus();
     }
 
@@ -353,22 +364,28 @@ handleBodyChange(event) {
 
     // New method to handle creating new schedule
     createNewSchedule() {
+        const isWeekly = this.selectedScheduleType === 'Weekly';
+    const daysToSchedule = isWeekly ? this.selectedDays : [this.selectedDay];
+
+    const promises = daysToSchedule.map(day => {
         const scheduleData = {
             reportId: this.selectedReportId,
             emailAddresses: this.emailList,
             scheduleType: this.selectedScheduleType,
-            scheduleDay: this.selectedDay,
+           scheduleDay: day, // ✅ Correct: use loop value
             scheduleTime: this.selectedTime,
             emailSubject: this.emailSubject || this.generateDefaultSubject(),
              emailBody: this.emailBody || ''
         };
+           return scheduleReportEmail({ scheduleData: JSON.stringify(scheduleData) });
+ });
+ console.log('Scheduling for days:', daysToSchedule);
 
-        scheduleReportEmail({ scheduleData: JSON.stringify(scheduleData) })
+       Promise.all(promises)
             .then(result => {
                 this.showToast('Success', 'Report email scheduled successfully', 'success');
                 this.showStatusMessage('Report email scheduled successfully!', 'slds-text-color_success');
                 this.resetForm();
-                 this.clearSelection();
                 this.loadScheduledReports();
             })
             .catch(error => {
@@ -380,15 +397,17 @@ handleBodyChange(event) {
 
     // New method to handle updating existing schedule
     updateExistingSchedule() {
-        const scheduleData = {
-            reportId: this.selectedReportId,
-            emailAddresses: this.emailList,
-            scheduleType: this.selectedScheduleType,
-            scheduleDay: this.selectedDay,
-            scheduleTime: this.selectedTime,
-            emailSubject: this.emailSubject || this.generateDefaultSubject(),
-              emailBody: this.emailBody || ''
-        };
+   console.log('Day',this.selectedDay)
+
+const scheduleData = {
+    reportId: this.selectedReportId,
+    emailAddresses: this.emailList,
+    scheduleType: this.selectedScheduleType,
+    scheduleDay: this.selectedDay,
+    scheduleTime: this.selectedTime,
+    emailSubject: this.emailSubject || this.generateDefaultSubject(),
+    emailBody: this.emailBody || ''
+};
 
         updateSchedule({ 
             scheduleId: this.editingScheduleId, 
@@ -398,7 +417,6 @@ handleBodyChange(event) {
                 this.showToast('Success', 'Schedule updated successfully', 'success');
                 this.showStatusMessage('Schedule updated successfully!', 'slds-text-color_success');
                 this.resetForm();
-                 this.clearSelection();
                 this.exitEditMode();
                 this.loadScheduledReports();
             })
@@ -426,33 +444,46 @@ handleBodyChange(event) {
 
     // New method to load schedule data for editing
     loadScheduleForEdit(scheduleId) {
-        getScheduleById({ scheduleId: scheduleId })
-            .then(result => {
-                this.editingScheduleId = scheduleId;
-                this.editingScheduleData = result;
-                this.selectedReportName = this.reportNameMap.get(result.reportId) || '';
-this.searchTerm = this.selectedReportName;
-                // Populate form with existing data
-                this.selectedReportId = result.reportId;
-                this.emailList = result.emailAddresses || [];
-                this.selectedScheduleType = result.scheduleType;
-                this.selectedDay = result.scheduleDay || '';
-                this.selectedTime = result.scheduleTime;
-                this.emailSubject = result.emailSubject || '';
-                this.emailBody = result.emailBody || '';
+    getScheduleById({ scheduleId: scheduleId })
+        .then(result => {
+            this.editingScheduleId = scheduleId;
+            this.editingScheduleData = result;
 
-                
-                this.isEditMode = true;
-                this.clearStatus();
-                
-                // Scroll to form
-                this.scrollToForm();
-            })
-            .catch(error => {
-                console.error('Error loading schedule for edit:', error);
-                this.showToast('Error', 'Failed to load schedule data for edit', 'error');
-            });
-    }
+            // Set report ID
+            this.selectedReportId = result.reportId;
+
+            // Set search input with report name if available
+            const reportName = this.reportNameMap.get(result.reportId);
+
+            // Set email recipients
+            this.emailList = result.emailAddresses || [];
+
+            // Set schedule type
+            this.selectedScheduleType = result.scheduleType;
+            this.searchTerm = reportName || '';
+
+            // Populate schedule day(s) depending on type
+            
+                this.selectedDay  = result.scheduleDay || '';
+              
+            
+
+            // Set other fields
+            this.selectedTime = result.scheduleTime;
+            this.emailSubject = result.emailSubject || '';
+            this.emailBody = result.emailBody || '';
+
+            this.isEditMode = true;
+            this.clearStatus();
+
+            // Scroll to form
+            this.scrollToForm();
+        })
+        .catch(error => {
+            console.error('Error loading schedule for edit:', error);
+            this.showToast('Error', 'Failed to load schedule data for edit', 'error');
+        });
+}
 
     // New method to exit edit mode
     exitEditMode() {
@@ -616,18 +647,23 @@ console.log("Schedule ID  delete:", scheduleId);
         return `${this.selectedScheduleType} ${reportName}`;
     }
 
-    resetForm() {
-        this.selectedReportId = '';
-        this.currentEmail = '';
-        this.emailList = [];
-        this.selectedScheduleType = 'Daily';
-        this.selectedDay = '';
-        this.selectedTime = '09:00';
-        this.emailSubject = '';
-         this.emailBody = '';
+   resetForm() {
+    this.selectedReportId = '';
+    this.selectedReportName = '';
+    this.searchTerm = '';          // ✅ Clear input field
+    this.reports = [];             // ✅ Clear result list
+    this.showDropdown = false;     // ✅ Hide dropdown
+    this.currentEmail = '';
+    this.emailList = [];
+    this.selectedScheduleType = 'Daily';
+    this.selectedDay = '';
+    this.selectedDays = [];
+    this.selectedTime = '09:00';
+    this.emailSubject = '';
+    this.emailBody = '';
+    this.clearStatus();
+}
 
-        this.clearStatus();
-    }
 
     showStatusMessage(message, cssClass) {
         this.statusMessage = message;

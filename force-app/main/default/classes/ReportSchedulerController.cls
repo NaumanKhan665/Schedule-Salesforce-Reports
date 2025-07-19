@@ -69,6 +69,8 @@ public with sharing class ReportSchedulerController {
 @AuraEnabled
 public static String scheduleReportEmail(String scheduleData) {
     try {
+     
+
         // Parse the schedule data
         Map<String, Object> dataMap = (Map<String, Object>) JSON.deserializeUntyped(scheduleData);
         
@@ -111,7 +113,7 @@ private static String createScheduledJob(String reportId, List<String> emailAddr
     ReportEmailSchedulable schedulableJob = new ReportEmailSchedulable(reportId, emailAddresses, emailSubject, emailBody);
     
     // Generate a unique job name that includes the report ID and recipient count
-    String jobName = 'Report Email - ' + reportId + ' - ' + emailSubject + ' - ' + emailAddresses.size() + ' recipients - ' + System.now().getTime();
+    String jobName = 'Report Email - ' + reportId + ' - ' + emailSubject + ' - ' + emailAddresses.size() +' recipients - '+ scheduleDay + ' - ' + System.now().getTime();
     
     // Schedule the job
     String jobId = System.schedule(jobName, cronExpression, schedulableJob);
@@ -559,5 +561,15 @@ private static String getStatusVariant(String state) {
         }
     }
     
-  
+    /*@AuraEnabled
+    public static String deleteScheduledJob(String jobId) {
+        try {
+            System.debug(jobId);
+            System.abortJob(jobId);
+            return 'Job deleted successfully';
+        } catch (Exception e) {
+            System.debug('Error Deleting schedule class: ' + e.getMessage());
+            throw new AuraHandledException('Error deleting scheduled job: ' + e.getMessage());
+        }
+    }*/
 }

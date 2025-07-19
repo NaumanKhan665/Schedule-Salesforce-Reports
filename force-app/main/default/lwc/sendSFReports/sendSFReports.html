@@ -6,7 +6,6 @@
             <!-- Search Input -->
             <div class="slds-form-element">
             <div class="slds-form-element__control">
-                Enter Report Name
                     <lightning-input
                         id="report-search"
                         type="search"
@@ -39,7 +38,7 @@
                        class="report-option slds-p-vertical_xx-small slds-p-horizontal_small"
                        role="option"
                        data-id={report.Id}
-                       onclick={handleReportSelect}>
+                       onmousedown={handleReportSelect}>
                         <div class="slds-media slds-listbox__option slds-listbox__option_plain slds-media_small">
                             
                             <div class="slds-media__body full-width">
@@ -146,16 +145,31 @@
                     {daySelectionLabel}
                 </label>
                 <div class="slds-form-element__control">
-                    <lightning-combobox
-                        name="daySelector"
-                        label={daySelectionLabel}
-                        value={selectedDay}
-                        placeholder={daySelectionPlaceholder}
-                        options={dayOptions}
-                        onchange={handleDayChange}
-                        variant="label-hidden"
-                        required>
-                    </lightning-combobox>
+                   <template if:true={isWeekly}>
+    <lightning-dual-listbox
+        name="weeklyDays"
+        label={daySelectionLabel}
+        source-label="Available Days"
+        selected-label="Selected Days"
+        options={dayOptions}
+        value={selectedDays}
+        onchange={handleDaysChange}
+        required>
+    </lightning-dual-listbox>
+</template>
+<template if:false={isWeekly}>
+    <lightning-combobox
+        name="daySelector"
+        label={daySelectionLabel}
+        value={selectedDay}
+        placeholder={daySelectionPlaceholder}
+        options={dayOptions}
+        onchange={handleDayChange}
+        variant="label-hidden"
+        required>
+    </lightning-combobox>
+</template>
+
                 </div>
             </div>
 
@@ -420,11 +434,11 @@
             <!-- Modal Body -->
             <div class="slds-modal__content slds-p-around_medium">
                 <!-- Report Selection -->
-               <!-- Search Input -->
+                      <!-- Search Input -->
             <div class="slds-form-element">
             <div class="slds-form-element__control">
                     <lightning-input
-                        id="report-search-edit"
+                        id="edit-report-search"
                         type="search"
                         value={searchTerm}
                         placeholder="Type report name to search..."
@@ -455,7 +469,7 @@
                        class="report-option slds-p-vertical_xx-small slds-p-horizontal_small"
                        role="option"
                        data-id={report.Id}
-                       onclick={handleReportSelect}>
+                       onmousedown={handleReportSelect}>
                         <div class="slds-media slds-listbox__option slds-listbox__option_plain slds-media_small">
                             
                             <div class="slds-media__body full-width">
@@ -527,6 +541,9 @@
                 </div>
 
                 <!-- Day Selector (if Weekly or Monthly) -->
+            
+            <!-- Day Selection (for Weekly/Monthly) -->
+           <!-- Day Selector (if Weekly or Monthly) -->
                 <template if:true={showDaySelection}>
                     <div class="slds-form-element slds-m-bottom_medium">
                         <label class="slds-form-element__label">{daySelectionLabel}</label>
@@ -542,7 +559,6 @@
                         </div>
                     </div>
                 </template>
-
                 <!-- Time -->
                 <div class="slds-form-element slds-m-bottom_medium">
                     <label class="slds-form-element__label">Schedule Time</label>
