@@ -9,7 +9,109 @@ import deleteScheduledJob from '@salesforce/apex/ReportSchedulerController.delet
 import getScheduleById from '@salesforce/apex/ReportSchedulerController.getScheduleById';
 import updateSchedule from '@salesforce/apex/ReportSchedulerController.updateSchedule';
 
+import searchReports from '@salesforce/apex/ReportSearchController.searchReports';
+
 export default class ReportEmailScheduler extends LightningElement {
+
+ @track searchTerm = '';
+    @track reports = [];
+    @track selectedReportName = '';
+    @track reportID = ''; // This will store the selected report ID
+    @track isLoading = false;
+    @track showDropdown = false;
+
+       debounceTimer;
+
+    handleSearchChange(event) {
+        this.searchTerm = event.target.value;
+        this.showDropdown = false;
+        
+        // Clear previous timer
+        clearTimeout(this.debounceTimer);
+        
+        // Set new timer for debounced search
+        this.debounceTimer = setTimeout(() => {
+            if (this.searchTerm.length >= 2) {
+                this.performSearch();
+            } else {
+                this.reports = [];
+                this.showDropdown = false;
+            }
+        }, 300);
+    }
+
+    performSearch() {
+        this.isLoading = true;
+        
+        searchReports({ searchTerm: this.searchTerm })
+            .then(result => {
+                this.reports = result.map(report => ({
+                    Id: report.Id,
+                    Name: report.Name,
+                    FolderName: report.FolderName,
+                    Description: report.Description || 'No description available'
+                }));
+                this.showDropdown = this.reports.length > 0;
+                this.isLoading = false;
+            })
+            .catch(error => {
+                this.isLoading = false;
+                this.showToast('Error', 'Error searching reports: ' + error.body.message, 'error');
+            });
+    }
+
+    handleReportSelect(event) {
+        const selectedId = event.currentTarget.dataset.id;
+        const selectedReport = this.reports.find(report => report.Id === selectedId);
+        
+        if (selectedReport) {
+            this.selectedReportId = selectedReport.Id;
+            this.selectedReportName = selectedReport.Name;
+            this.searchTerm = selectedReport.Name;
+            this.showDropdown = false;
+            
+            // Dispatch custom event with selected report ID
+            const selectEvent = new CustomEvent('reportselected', {
+                detail: {
+                    selectedReportId: this.reportID,
+                    reportName: this.selectedReportName
+                }
+            });
+            this.dispatchEvent(selectEvent);
+            
+           // this.showToast('Success', `Report "${selectedReport.Name}" selected`, 'success');
+        }
+    }
+
+    handleInputFocus() {
+        if (this.reports.length > 0) {
+            this.showDropdown = true;
+        }
+    }
+
+    handleInputBlur() {
+        // Delay hiding dropdown to allow for click events
+        setTimeout(() => {
+            this.showDropdown = false;
+        }, 200);
+    }
+
+    clearSelection() {
+        this.selectedReportId = '';
+        this.selectedReportName = '';
+        this.searchTerm = '';
+        this.reports = [];
+        this.showDropdown = false;
+    }
+
+ 
+
+    // Getter for displaying current selection
+    get hasSelection() {
+        return this.selectedReportId !== '';
+    }
+
+
     @track selectedReportId = '';
       @track showAdvanced = false;
     @track currentEmail = '';
@@ -266,6 +368,7 @@ handleBodyChange(event) {
                 this.showToast('Success', 'Report email scheduled successfully', 'success');
                 this.showStatusMessage('Report email scheduled successfully!', 'slds-text-color_success');
                 this.resetForm();
+                 this.clearSelection();
                 this.loadScheduledReports();
             })
             .catch(error => {
@@ -295,6 +398,7 @@ handleBodyChange(event) {
                 this.showToast('Success', 'Schedule updated successfully', 'success');
                 this.showStatusMessage('Schedule updated successfully!', 'slds-text-color_success');
                 this.resetForm();
+                 this.clearSelection();
                 this.exitEditMode();
                 this.loadScheduledReports();
             })
@@ -326,7 +430,8 @@ handleBodyChange(event) {
             .then(result => {
                 this.editingScheduleId = scheduleId;
                 this.editingScheduleData = result;
-                
+                this.selectedReportName = this.reportNameMap.get(result.reportId) || '';
+this.searchTerm = this.selectedReportName;
                 // Populate form with existing data
                 this.selectedReportId = result.reportId;
                 this.emailList = result.emailAddresses || [];

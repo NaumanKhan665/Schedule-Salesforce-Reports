@@ -384,6 +384,41 @@ static void testParseJobDetailsThroughGetScheduledJobs() {
     class MockSchedulable implements Schedulable {
         public void execute(SchedulableContext context) {}
     }
+    
+
+
+    @isTest
+    static void testSearchReportsSOSL() {
+        Test.startTest();
+
+        List<Report> results = new List<Report>();
+        try {
+            results = ReportSchedulerController.searchReports('Test');
+        } catch (Exception e) {
+            System.assert(false, 'Exception was thrown from searchReports: ' + e.getMessage());
+        }
+
+        Test.stopTest();
+
+        // We can't assert data unless using SeeAllData=true, but we can assert the type and presence of response
+        System.assertNotEquals(null, results, 'SOSL result should not be null.');
+    }
+
+    @isTest
+    static void testSearchReportsSOQL() {
+        Test.startTest();
+
+        List<Report> results = new List<Report>();
+        try {
+            results = ReportSchedulerController.searchReportsSOQL('Test');
+        } catch (Exception e) {
+            System.assert(false, 'Exception was thrown from searchReportsSOQL: ' + e.getMessage());
+        }
+
+        Test.stopTest();
+
+        System.assertNotEquals(null, results, 'SOQL result should not be null.');
+    }
 
     
 }

@@ -13,6 +13,10 @@ public class ReportEmailSchedulable implements Schedulable {
 
     public void execute(SchedulableContext context) {
         try {
+            if (String.isBlank(reportId)) {
+            throw new AuraHandledException('Report Id is missing.');
+        }
+            
             Database.executeBatch(new ReportEmailBatch(reportId, emailAddresses, emailSubject, emailBody), 1);
              System.debug('Class Run successfulll ');
 
@@ -22,7 +26,7 @@ public class ReportEmailSchedulable implements Schedulable {
         }
     }
 
-    private void sendErrorNotificationToAdmin(String errorMessage) {
+    public void sendErrorNotificationToAdmin(String errorMessage) {
         try {
             String adminEmail = getAdminEmail();
             if (String.isNotBlank(adminEmail)) {
@@ -38,11 +42,11 @@ public class ReportEmailSchedulable implements Schedulable {
         }
     }
 
-    private String getAdminEmail() {
+    public String getAdminEmail() {
         return null; // Implement via Custom Metadata or Settings
     }
 
-    private String buildErrorEmailBody(String errorMessage) {
+    public String buildErrorEmailBody(String errorMessage) {
         return '<html><body>' +
             '<h2>Scheduled Report Email Error</h2>' +
             '<p><strong>Report Id:</strong> ' + reportId + '</p>' +

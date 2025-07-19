@@ -2,9 +2,68 @@
 <template>
     <lightning-card title="Schedule Report Email" icon-name="standard:email">
         <div class="slds-p-horizontal_medium">
-            
+          
+            <!-- Search Input -->
+            <div class="slds-form-element">
+            <div class="slds-form-element__control">
+                Enter Report Name
+                    <lightning-input
+                        id="report-search"
+                        type="search"
+                        value={searchTerm}
+                        placeholder="Type report name to search..."
+                        onchange={handleSearchChange}
+                        onfocus={handleInputFocus}
+                        onblur={handleInputBlur}
+                        class="search-input">
+                    </lightning-input>
+                  
+               
+
+            <!-- Loading Spinner -->
+            <div if:true={isLoading} class="slds-m-top_small">
+                <lightning-spinner 
+                    alternative-text="Searching..." 
+                    size="small">
+                </lightning-spinner>
+            </div>
+
+          <!-- Search Results Dropdown -->
+<!-- Force a wide dropdown wrapper -->
+<div if:true={showDropdown} class="slds-dropdown slds-dropdown_length-5 slds-dropdown_fluid">
+    <div class="slds-listbox slds-listbox_vertical" role="presentation">
+        <ul class="slds-dropdown__list" role="presentation">
+            <template for:each={reports} for:item="report">
+                <li key={report.Id} class="slds-dropdown__item" role="presentation">
+                    <a href="#"
+                       class="report-option slds-p-vertical_xx-small slds-p-horizontal_small"
+                       role="option"
+                       data-id={report.Id}
+                       onclick={handleReportSelect}>
+                        <div class="slds-media slds-listbox__option slds-listbox__option_plain slds-media_small">
+                            
+                            <div class="slds-media__body full-width">
+                                <div class="report-name" title={report.Name}>
+                                    {report.Name}
+                                </div>
+                              
+                            </div>
+                        </div>
+                    </a>
+                </li>
+            </template>
+        </ul>
+    </div>
+</div>
+
+</div>
+</div>
+
+         
+
+            <!-- No Results Message -->
             <!-- Report Selection Section -->
-            <div class="slds-form-element slds-m-bottom_medium">
+           <!--  <div class="slds-form-element slds-m-bottom_medium">
                 <label class="slds-form-element__label" for="report-selector">
                     <abbr class="slds-required" title="required">*</abbr>
                     Select Report
@@ -21,7 +80,7 @@
                         required>
                     </lightning-combobox>
                 </div>
-            </div>
+            </div>-->
 
             <!-- Recipients Section -->
             <div class="slds-form-element slds-m-bottom_medium">
@@ -361,19 +420,60 @@
             <!-- Modal Body -->
             <div class="slds-modal__content slds-p-around_medium">
                 <!-- Report Selection -->
-                <div class="slds-form-element slds-m-bottom_medium">
-                    <label class="slds-form-element__label">Select Report</label>
-                    <div class="slds-form-element__control">
-                        <lightning-combobox
-                            name="editReportSelector"
-                            value={selectedReportId}
-                            placeholder="Choose a report..."
-                            options={reportOptions}
-                            onchange={handleReportChange}
-                            required>
-                        </lightning-combobox>
-                    </div>
-                </div>
+               <!-- Search Input -->
+            <div class="slds-form-element">
+            <div class="slds-form-element__control">
+                    <lightning-input
+                        id="report-search-edit"
+                        type="search"
+                        value={searchTerm}
+                        placeholder="Type report name to search..."
+                        onchange={handleSearchChange}
+                        onfocus={handleInputFocus}
+                        onblur={handleInputBlur}
+                        class="search-input">
+                    </lightning-input>
+                  
+               
+
+            <!-- Loading Spinner -->
+            <div if:true={isLoading} class="slds-m-top_small">
+                <lightning-spinner 
+                    alternative-text="Searching..." 
+                    size="small">
+                </lightning-spinner>
+            </div>
+
+          <!-- Search Results Dropdown -->
+<!-- Force a wide dropdown wrapper -->
+<div if:true={showDropdown} class="slds-dropdown slds-dropdown_length-5 slds-dropdown_fluid">
+    <div class="slds-listbox slds-listbox_vertical" role="presentation">
+        <ul class="slds-dropdown__list" role="presentation">
+            <template for:each={reports} for:item="report">
+                <li key={report.Id} class="slds-dropdown__item" role="presentation">
+                    <a href="#"
+                       class="report-option slds-p-vertical_xx-small slds-p-horizontal_small"
+                       role="option"
+                       data-id={report.Id}
+                       onclick={handleReportSelect}>
+                        <div class="slds-media slds-listbox__option slds-listbox__option_plain slds-media_small">
+                            
+                            <div class="slds-media__body full-width">
+                                <div class="report-name" title={report.Name}>
+                                    {report.Name}
+                                </div>
+                              
+                            </div>
+                        </div>
+                    </a>
+                </li>
+            </template>
+        </ul>
+    </div>
+</div>
+
+</div>
+</div>
                               <!-- Recipients Section -->
             <div class="slds-form-element slds-m-bottom_medium">
                 <label class="slds-form-element__label">

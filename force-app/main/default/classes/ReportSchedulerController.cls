@@ -1,6 +1,55 @@
 // ReportSchedulerController.cls
 public with sharing class ReportSchedulerController {
+      @AuraEnabled(cacheable=true)
+    public static List<Report> searchReports(String searchTerm) {
+        try {
+            // Sanitize search term
+            String sanitizedSearchTerm = String.escapeSingleQuotes(searchTerm);
+            
+            // Build SOSL query to search reports
+            String searchQuery = 'FIND \'' + sanitizedSearchTerm + '*\' IN NAME FIELDS ' +
+                               'RETURNING Report(Id, Name, FolderName, Description, CreatedDate ' +
+                               'WHERE IsDeleted = FALSE) ' +
+                               'LIMIT 20';
+            
+            List<List<SObject>> searchResults = search.query(searchQuery);
+            
+            if (searchResults.size() > 0) {
+                List<Report> reports = (List<Report>) searchResults[0];
+                return reports;
+            }
+            
+            return new List<Report>();
+            
+        } catch (Exception e) {
+            throw new AuraHandledException('Error searching reports: ' + e.getMessage());
+        }
+    }
     
+    @AuraEnabled(cacheable=true)
+    public static List<Report> searchReportsSOQL(String searchTerm) {
+        try {
+            // Alternative method using SOQL with LIKE operator
+            String sanitizedSearchTerm = String.escapeSingleQuotes(searchTerm);
+            String likePattern = '%' + sanitizedSearchTerm + '%';
+            
+            List<Report> reports = [
+                SELECT Id, Name, FolderName, Description, CreatedDate 
+                FROM Report 
+                WHERE Name LIKE :likePattern 
+                AND IsDeleted = FALSE
+                ORDER BY Name ASC
+                LIMIT 20
+            ];
+            
+            return reports;
+            
+        } catch (Exception e) {
+            throw new AuraHandledException('Error searching reports: ' + e.getMessage());
+        }
+    }
+    
+
     @AuraEnabled(cacheable=true)
     public static List<Report> getReports() {
         try {
@@ -510,15 +559,5 @@ private static String getStatusVariant(String state) {
         }
     }
     
-    /*@AuraEnabled
-    public static String deleteScheduledJob(String jobId) {
-        try {
-            System.debug(jobId);
-            System.abortJob(jobId);
-            return 'Job deleted successfully';
-        } catch (Exception e) {
-            System.debug('Error Deleting schedule class: ' + e.getMessage());
-            throw new AuraHandledException('Error deleting scheduled job: ' + e.getMessage());
-        }
-    }*/
+  
 }

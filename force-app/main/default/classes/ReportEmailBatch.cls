@@ -1,9 +1,9 @@
 public class ReportEmailBatch implements Database.Batchable<sObject>, Database.AllowsCallouts {
 
-    private String reportId;
-    private List<String> emailAddresses;
-    private String emailSubject;
-    private String emailBody;
+    public  String reportId;
+    public  List<String> emailAddresses;
+    public  String emailSubject;
+    public  String emailBody;
 
     public ReportEmailBatch(String reportId, List<String> emailAddresses, String emailSubject, String emailBody) {
         this.reportId = reportId;
