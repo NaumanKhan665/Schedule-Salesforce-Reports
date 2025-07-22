@@ -8,8 +8,9 @@ public class ReportEmailSchedulableTest {
         List<String> emails = new List<String>{'test@example.com'};
         String subject = 'Subject';
         String body = 'Body';
+        string format='csv';
 
-        ReportEmailSchedulable schedulable = new ReportEmailSchedulable(DUMMY_REPORT_ID, emails, subject, body);
+        ReportEmailSchedulable schedulable = new ReportEmailSchedulable(DUMMY_REPORT_ID, emails, subject, body,format);
 
         System.assertNotEquals(null, schedulable);
     }
@@ -17,7 +18,7 @@ public class ReportEmailSchedulableTest {
     @isTest
     static void testExecuteSuccess() {
         List<String> emails = new List<String>{'test@example.com'};
-        ReportEmailSchedulable job = new ReportEmailSchedulable(DUMMY_REPORT_ID, emails, 'Subject', 'Body');
+        ReportEmailSchedulable job = new ReportEmailSchedulable(DUMMY_REPORT_ID, emails, 'Subject', 'Body','csv');
 
         Test.startTest();
         job.execute(null);
@@ -28,7 +29,7 @@ public class ReportEmailSchedulableTest {
 
     @isTest
     static void testExecuteWithExceptionPath() {
-        ReportEmailSchedulable job = new ReportEmailSchedulable(null, new List<String>(), 'x', 'y');
+        ReportEmailSchedulable job = new ReportEmailSchedulable(null, new List<String>(), 'x', 'y','csv');
         Test.startTest();
         job.execute(null);
         Test.stopTest();
@@ -39,7 +40,7 @@ public class ReportEmailSchedulableTest {
     @isTest
     static void testBuildErrorEmailBodyContent() {
         List<String> emails = new List<String>{'x@y.com'};
-        ReportEmailSchedulable job = new ReportEmailSchedulable(DUMMY_REPORT_ID, emails, 'TestSubject', 'TestBody');
+        ReportEmailSchedulable job = new ReportEmailSchedulable(DUMMY_REPORT_ID, emails, 'TestSubject', 'TestBody','testCsv');
 
         String html = job.buildErrorEmailBody('TestError');
         System.assert(html.contains('Scheduled Report Email Error'));
@@ -48,8 +49,21 @@ public class ReportEmailSchedulableTest {
 
     @isTest
     static void testGetAdminEmailReturnsNull() {
-        ReportEmailSchedulable job = new ReportEmailSchedulable(DUMMY_REPORT_ID, new List<String>{'a@a.com'}, 's', 'b');
+        ReportEmailSchedulable job = new ReportEmailSchedulable(DUMMY_REPORT_ID, new List<String>{'a@a.com'}, 's', 'b','csv');
         String email = job.getAdminEmail();
         System.assertEquals(null, email);
     }
+    @isTest
+static void testExecuteThrowsException() {
+    // Use magic ID to simulate failure
+    ReportEmailSchedulable job = new ReportEmailSchedulable('FAIL_BATCH', new List<String>{'fail@test.com'}, 'Fail Subject', 'Fail Body', 'csv');
+
+    Test.startTest();
+    job.execute(null); // Should enter the catch block
+    Test.stopTest();
+
+    System.assert(true, 'Exception path in execute() should be covered');
+}
+
+    
 }

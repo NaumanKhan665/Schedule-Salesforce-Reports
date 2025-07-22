@@ -3,6 +3,7 @@ public with sharing class ReportSchedulerController {
       @AuraEnabled(cacheable=true)
     public static List<Report> searchReports(String searchTerm) {
         try {
+            
             // Sanitize search term
             String sanitizedSearchTerm = String.escapeSingleQuotes(searchTerm);
             
@@ -81,6 +82,7 @@ public static String scheduleReportEmail(String scheduleData) {
         String scheduleTime = (String) dataMap.get('scheduleTime');
         String emailSubject = (String) dataMap.get('emailSubject');
         String emailBody = (String) dataMap.get('emailBody'); // Now using this
+        String fileFormat = (String) dataMap.get('fileFormat');
         
         // Convert email addresses to List<String>
         List<String> emailAddresses = new List<String>();
@@ -89,10 +91,10 @@ public static String scheduleReportEmail(String scheduleData) {
         }
         
         // Create or update the scheduled job - now passing emailBody
-        String jobId = createScheduledJob(reportId, emailAddresses, scheduleType, scheduleDay, scheduleTime, emailSubject, emailBody);
+        String jobId = createScheduledJob(reportId, emailAddresses, scheduleType, scheduleDay, scheduleTime, emailSubject, emailBody,fileFormat);
         
         // Store the schedule configuration for future reference - now passing emailBody
-        saveScheduleConfiguration(reportId, emailAddresses, scheduleType, scheduleDay, scheduleTime, emailSubject, emailBody, jobId);
+        saveScheduleConfiguration(reportId, emailAddresses, scheduleType, scheduleDay, scheduleTime, emailSubject, emailBody, jobId,fileFormat);
         
         return 'SUCCESS';
         
@@ -104,13 +106,13 @@ public static String scheduleReportEmail(String scheduleData) {
 
 // Updated createScheduledJob method in ReportSchedulerController.cls
 private static String createScheduledJob(String reportId, List<String> emailAddresses, String scheduleType, 
-                                       String scheduleDay, String scheduleTime, String emailSubject, String emailBody) {
+                                       String scheduleDay, String scheduleTime, String emailSubject, String emailBody,string fileFormat) {
     
     // Generate cron expression based on schedule type
     String cronExpression = generateCronExpression(scheduleType, scheduleDay, scheduleTime);
     
     // Create the schedulable job with email body
-    ReportEmailSchedulable schedulableJob = new ReportEmailSchedulable(reportId, emailAddresses, emailSubject, emailBody);
+    ReportEmailSchedulable schedulableJob = new ReportEmailSchedulable(reportId, emailAddresses, emailSubject, emailBody,fileFormat);
     
     // Generate a unique job name that includes the report ID and recipient count
     String jobName = 'Report Email - ' + reportId + ' - ' + emailSubject + ' - ' + emailAddresses.size() +' recipients - '+ scheduleDay + ' - ' + System.now().getTime();
@@ -164,7 +166,7 @@ private static String createScheduledJob(String reportId, List<String> emailAddr
     
     
  private static void saveScheduleConfiguration(String reportId, List<String> emailAddresses, String scheduleType, 
-                                            String scheduleDay, String scheduleTime, String emailSubject, String emailBody, String jobId) {
+                                            String scheduleDay, String scheduleTime, String emailSubject, String emailBody, String jobId,string fileFormat) {
     try {
         // Get report name for better display
         String reportName = 'Unknown Report';
@@ -192,7 +194,8 @@ private static String createScheduledJob(String reportId, List<String> emailAddr
             Email_Body__c = emailBody, // Add this field to your custom object
             Job_Id__c = jobId,
             Is_Active__c = true,
-            Next_Fire_Time__c = nextFireTime
+            Next_Fire_Time__c = nextFireTime,
+            File_Format__c=fileFormat
         );
         insert scheduleRecord;
         
@@ -252,7 +255,7 @@ public static Map<String, Object> getScheduleById(String scheduleId) {
         List<Report_Schedule__c> schedules = [
             SELECT Id, Report_Id__c, Report_Name__c, Email_Addresses__c, Schedule_Type__c, 
                    Schedule_Day__c, Schedule_Time__c, Email_Subject__c, Job_Id__c,Email_Body__c,
-                   Next_Fire_Time__c
+                   Next_Fire_Time__c,File_Format__c
             FROM Report_Schedule__c 
             WHERE  Job_Id__c = :scheduleId AND Is_Active__c = true
             LIMIT 1
@@ -276,6 +279,8 @@ public static Map<String, Object> getScheduleById(String scheduleId) {
         scheduleData.put('emailSubject', schedule.Email_Subject__c);
         scheduleData.put('jobId', schedule.Job_Id__c);
         scheduleData.put('emailBody', schedule.Email_Body__c);
+        scheduleData.put('fileFormat', schedule.File_Format__c);
+
 
 
         
@@ -299,6 +304,7 @@ public static String updateSchedule(String scheduleId, String scheduleData) {
         String scheduleTime = (String) dataMap.get('scheduleTime');
         String emailSubject = (String) dataMap.get('emailSubject');
         String emailBody = (String) dataMap.get('emailBody'); // Now using this
+         String fileFormat = (String) dataMap.get('fileFormat');
         
         // Convert email addresses to List<String>
         List<String> emailAddresses = new List<String>();
@@ -332,10 +338,10 @@ public static String updateSchedule(String scheduleId, String scheduleData) {
         String recordId = existingSchedule.Id;
         
         // Create new scheduled job - now passing emailBody
-        String newJobId = createScheduledJob(reportId, emailAddresses, scheduleType, scheduleDay, scheduleTime, emailSubject, emailBody);
+        String newJobId = createScheduledJob(reportId, emailAddresses, scheduleType, scheduleDay, scheduleTime, emailSubject, emailBody,fileFormat);
         
         // Update the schedule record - now passing emailBody
-        updateScheduleRecord(recordId, reportId, emailAddresses, scheduleType, scheduleDay, scheduleTime, emailSubject, emailBody, newJobId);
+        updateScheduleRecord(recordId, reportId, emailAddresses, scheduleType, scheduleDay, scheduleTime, emailSubject, emailBody, newJobId,fileFormat);
         
         return 'SUCCESS';
         
@@ -391,7 +397,7 @@ public static String deleteScheduledJob(String jobId) {
 // Updated updateScheduleRecord method
 private static void updateScheduleRecord(String recordId, String reportId, List<String> emailAddresses, 
                                        String scheduleType, String scheduleDay, String scheduleTime, 
-                                       String emailSubject, String emailBody, String jobId) {
+                                       String emailSubject, String emailBody, String jobId,string fileFormat) {
     try {
         // Get report name
         String reportName = 'Unknown Report';
@@ -419,8 +425,10 @@ private static void updateScheduleRecord(String recordId, String reportId, List<
             Email_Subject__c = emailSubject,
             Email_Body__c = emailBody, // Add this field to your custom object
             Job_Id__c = jobId,
-            Next_Fire_Time__c = nextFireTime
+            Next_Fire_Time__c = nextFireTime,
+            File_Format__c=fileFormat
         );
+        
         update scheduleRecord;
         
     } catch (Exception e) {
@@ -561,15 +569,5 @@ private static String getStatusVariant(String state) {
         }
     }
     
-    /*@AuraEnabled
-    public static String deleteScheduledJob(String jobId) {
-        try {
-            System.debug(jobId);
-            System.abortJob(jobId);
-            return 'Job deleted successfully';
-        } catch (Exception e) {
-            System.debug('Error Deleting schedule class: ' + e.getMessage());
-            throw new AuraHandledException('Error deleting scheduled job: ' + e.getMessage());
-        }
-    }*/
+    
 }

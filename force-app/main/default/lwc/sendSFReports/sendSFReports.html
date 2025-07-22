@@ -6,6 +6,7 @@
             <!-- Search Input -->
             <div class="slds-form-element">
             <div class="slds-form-element__control">
+                Search Report
                     <lightning-input
                         id="report-search"
                         type="search"
@@ -80,6 +81,25 @@
                     </lightning-combobox>
                 </div>
             </div>-->
+<!-- Report Format Picker -->
+<div class="slds-form-element slds-m-bottom_medium">
+    <label class="slds-form-element__label">
+        <abbr class="slds-required" title="required">*</abbr>
+        Report Format
+    </label>
+    <div class="slds-form-element__control">
+        <lightning-combobox
+            name="reportFormat"
+            label="Select Format"
+            value={selectedFormat}
+            placeholder="Choose file format..."
+            options={formatOptions}
+            onchange={handleFormatChange}
+            variant="label-hidden"
+            required>
+        </lightning-combobox>
+    </div>
+</div>
 
             <!-- Recipients Section -->
             <div class="slds-form-element slds-m-bottom_medium">
@@ -487,6 +507,24 @@
 </div>
 
 </div>
+</div>
+<div class="slds-form-element slds-m-bottom_medium">
+    <label class="slds-form-element__label">
+        <abbr class="slds-required" title="required">*</abbr>
+        Report Format
+    </label>
+    <div class="slds-form-element__control">
+        <lightning-combobox
+            name="reportFormat"
+            label="Select Format"
+            value={selectedFormat}
+            placeholder="Choose file format..."
+            options={formatOptions}
+            onchange={handleFormatChange}
+            variant="label-hidden"
+            required>
+        </lightning-combobox>
+    </div>
 </div>
                               <!-- Recipients Section -->
             <div class="slds-form-element slds-m-bottom_medium">

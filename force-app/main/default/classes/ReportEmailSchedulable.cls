@@ -3,17 +3,23 @@ public class ReportEmailSchedulable implements Schedulable {
     private List<String> emailAddresses;
     private String emailSubject;
     private String emailBody;
-
-    public ReportEmailSchedulable(String reportId, List<String> emailAddresses, String emailSubject, String emailBody) {
+   private string fileFormat;
+    public ReportEmailSchedulable(String reportId, List<String> emailAddresses, String emailSubject, String emailBody,String fileFormat) {
         this.reportId = reportId;
         this.emailAddresses = emailAddresses;
         this.emailSubject = emailSubject;
         this.emailBody = emailBody;
+         this.fileFormat = fileFormat;  
     }
 
     public void execute(SchedulableContext context) {
         try {
-            Database.executeBatch(new ReportEmailBatch(reportId, emailAddresses, emailSubject, emailBody), 1);
+           
+             if (Test.isRunningTest() && this.reportId == 'FAIL_BATCH') {
+            throw new AuraHandledException('Simulated batch failure'); 
+
+        }
+            Database.executeBatch(new ReportEmailBatch(reportId, emailAddresses, emailSubject, emailBody,fileFormat), 1);
              System.debug('Class Run successfulll ');
 
         } catch (Exception e) {

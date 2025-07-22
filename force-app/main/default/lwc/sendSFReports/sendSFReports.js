@@ -32,6 +32,7 @@ export default class ReportEmailScheduler extends LightningElement {
     @track selectedTime = '09:00';
     @track emailSubject = '';
     @track emailBody = '';
+    @track selectedFormat = '';
     @track reportOptions = [];
     @track statusMessage = '';
     @track showStatus = false;
@@ -53,7 +54,13 @@ export default class ReportEmailScheduler extends LightningElement {
         { label: 'Weekly', value: 'Weekly' },
         { label: 'Monthly', value: 'Monthly' }
     ];
-
+get formatOptions() {
+    return [
+        { label: 'Excel (.xlsx)', value: 'xlsx' },
+        { label: 'Excel 97-2003 (.xls)', value: 'xls' },
+        { label: 'CSV (.csv)', value: 'csv' }
+    ];
+}
     // Day options for weekly schedule
     weeklyDayOptions = [
         { label: 'Monday', value: 'Monday' },
@@ -254,6 +261,7 @@ export default class ReportEmailScheduler extends LightningElement {
         return !this.selectedReportId || 
                !this.hasEmails || 
                !this.selectedTime || 
+               !this.selectedFormat||
          (this.showDaySelection && (
                (this.isWeekly
                    ? (this.isEditMode 
@@ -316,6 +324,9 @@ export default class ReportEmailScheduler extends LightningElement {
 handleBodyChange(event) {
     this.emailBody = event.target.value;
 } 
+handleFormatChange(event) {
+    this.selectedFormat  = event.target.value;
+}
  handleToggleChange(event) {
         this.showAdvanced = event.target.checked;
     }
@@ -375,7 +386,8 @@ handleBodyChange(event) {
            scheduleDay: day, // ✅ Correct: use loop value
             scheduleTime: this.selectedTime,
             emailSubject: this.emailSubject || this.generateDefaultSubject(),
-             emailBody: this.emailBody || ''
+             emailBody: this.emailBody || '',
+              fileFormat:this.selectedFormat
         };
            return scheduleReportEmail({ scheduleData: JSON.stringify(scheduleData) });
  });
@@ -406,7 +418,8 @@ const scheduleData = {
     scheduleDay: this.selectedDay,
     scheduleTime: this.selectedTime,
     emailSubject: this.emailSubject || this.generateDefaultSubject(),
-    emailBody: this.emailBody || ''
+    emailBody: this.emailBody || '',
+     fileFormat :this.selectedFormat
 };
 
         updateSchedule({ 
@@ -472,6 +485,7 @@ const scheduleData = {
             this.selectedTime = result.scheduleTime;
             this.emailSubject = result.emailSubject || '';
             this.emailBody = result.emailBody || '';
+            this.selectedFormat =result.fileFormat 
 
             this.isEditMode = true;
             this.clearStatus();
@@ -661,6 +675,7 @@ console.log("Schedule ID  delete:", scheduleId);
     this.selectedTime = '09:00';
     this.emailSubject = '';
     this.emailBody = '';
+  this.selectedFormat ='';
     this.clearStatus();
 }
 
