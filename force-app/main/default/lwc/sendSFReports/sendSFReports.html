@@ -61,26 +61,7 @@
 
          
 
-            <!-- No Results Message -->
-            <!-- Report Selection Section -->
-           <!--  <div class="slds-form-element slds-m-bottom_medium">
-                <label class="slds-form-element__label" for="report-selector">
-                    <abbr class="slds-required" title="required">*</abbr>
-                    Select Report
-                </label>
-                <div class="slds-form-element__control">
-                    <lightning-combobox
-                        name="reportSelector"
-                        label="Select Report"
-                        value={selectedReportId}
-                        placeholder="Choose a report..."
-                        options={reportOptions}
-                        onchange={handleReportChange}
-                        variant="label-hidden"
-                        required>
-                    </lightning-combobox>
-                </div>
-            </div>-->
+         
 <!-- Report Format Picker -->
 <div class="slds-form-element slds-m-bottom_medium">
     <label class="slds-form-element__label">
@@ -165,18 +146,28 @@
                     {daySelectionLabel}
                 </label>
                 <div class="slds-form-element__control">
-                   <template if:true={isWeekly}>
-    <lightning-dual-listbox
-        name="weeklyDays"
-        label={daySelectionLabel}
-        source-label="Available Days"
-        selected-label="Selected Days"
-        options={dayOptions}
-        value={selectedDays}
-        onchange={handleDaysChange}
-        required>
-    </lightning-dual-listbox>
+    <template if:true={isWeekly}>
+    <div class="slds-form-element__control">
+        <div class="slds-checkbox_button-group">
+            <template for:each={days} for:item="day">
+                <span class="slds-button slds-checkbox_button" key={day.name}>
+                    <input 
+                        type="checkbox" 
+                        name={day.name} 
+                        id={day.id} 
+                        checked={day.checked}
+                        onchange={handleDayChange}
+                        data-day={day.name}
+                    />
+                    <label for={day.id} class="slds-checkbox_button__label">
+                        <span class="slds-checkbox_faux">{day.label}</span>
+                    </label>
+                </span>
+            </template>
+        </div>
+    </div>
 </template>
+
 <template if:false={isWeekly}>
     <lightning-combobox
         name="daySelector"
@@ -184,7 +175,7 @@
         value={selectedDay}
         placeholder={daySelectionPlaceholder}
         options={dayOptions}
-        onchange={handleDayChange}
+        onchange={handleMonthlyDayChange}
         variant="label-hidden"
         required>
     </lightning-combobox>
@@ -194,21 +185,41 @@
             </div>
 
             <!-- Time Selection -->
-            <div class="slds-form-element slds-m-bottom_medium">
+            <div class="slds-form-element slds-m-bottom_medium" onfocusout={handleFocusOut}>
                 <label class="slds-form-element__label">
                     <abbr class="slds-required" title="required">*</abbr>
                     Schedule Time
                 </label>
                 <div class="slds-form-element__control">
-                    <lightning-input
-                        type="time"
-                        name="scheduleTime"
-                        label="Schedule Time"
-                        value={selectedTime}
-                        onchange={handleTimeChange}
-                        variant="label-hidden"
-                        required>
-                    </lightning-input>
+                      <lightning-input
+                type="text"
+                name="scheduleTime"
+                label="Schedule Time"
+                value={selectedTime}
+                  onclick={showTimeDropdown}
+                onchange={handleTimeChange}
+                onkeydown={handleTimeTyping}
+                placeholder="Enter time (e.g. 15:30)"
+                variant="label-hidden"
+                
+                required class="time-input">
+            </lightning-input>
+                       <!-- Custom dropdown for time options -->
+            <template if:true={showDropdown}>
+                <div class="custom-time-dropdown slds-box slds-m-top_x-small">
+                    <ul class="slds-list_none">
+                        <template for:each={timeOptions} for:item="option">
+    <li key={option.value} class="slds-p-vertical_xx-small">
+        <a href="javascript:void(0);" data-value={option.value} onclick={handleTimeSelect}>
+            {option.label}
+        </a>
+    </li>
+</template>
+
+                    </ul>
+                </div>
+            </template>     
+            
                 </div>
             </div>
                                     <!-- Advanced Options Toggle -->
@@ -582,33 +593,77 @@
             
             <!-- Day Selection (for Weekly/Monthly) -->
            <!-- Day Selector (if Weekly or Monthly) -->
-                <template if:true={showDaySelection}>
-                    <div class="slds-form-element slds-m-bottom_medium">
-                        <label class="slds-form-element__label">{daySelectionLabel}</label>
-                        <div class="slds-form-element__control">
-                            <lightning-combobox
-                                name="editDaySelector"
-                                value={selectedDay}
-                                placeholder={daySelectionPlaceholder}
-                                options={dayOptions}
-                                onchange={handleDayChange}
-                                required>
-                            </lightning-combobox>
-                        </div>
-                    </div>
-                </template>
+            <div if:true={showDaySelection} class="slds-form-element slds-m-bottom_medium">
+                
+                <div class="slds-form-element__control">
+            <template if:true={isWeekly}>
+     <div class="slds-form-element__control">
+        <div class="slds-checkbox_button-group">
+            <template for:each={days} for:item="day">
+                <span class="slds-button slds-checkbox_button" key={day.name}>
+                    <input 
+                        type="checkbox" 
+                        name={day.name} 
+                        id={day.id} 
+                        checked={day.checked}
+                        onchange={handleDayChange}
+                        data-day={day.name}
+                    />
+                    <label for={day.id} class="slds-checkbox_button__label">
+                        <span class="slds-checkbox_faux">{day.label}</span>
+                    </label>
+                </span>
+            </template>
+        </div>
+    </div>
+</template>
+<template if:false={isWeekly}>
+    <lightning-combobox
+        name="daySelector"
+        label={daySelectionLabel}
+        value={selectedDay}
+        placeholder={daySelectionPlaceholder}
+        options={dayOptions}
+        onchange={handleMonthlyDayChange}
+        required>
+    </lightning-combobox>
+</template>
+</div>
+</div>
                 <!-- Time -->
                 <div class="slds-form-element slds-m-bottom_medium">
                     <label class="slds-form-element__label">Schedule Time</label>
-                    <div class="slds-form-element__control">
-                        <lightning-input
-                            type="time"
-                            name="editTime"
-                            value={selectedTime}
-                            onchange={handleTimeChange}
-                            required>
-                        </lightning-input>
-                    </div>
+                             <div class="slds-form-element__control">
+                      <lightning-input
+                type="text"
+                name="scheduleTime"
+                label="Schedule Time"
+                value={selectedTime}
+                  onclick={showTimeDropdown}
+                onchange={handleTimeChange}
+                onkeydown={handleTimeTyping}
+                placeholder="Enter time (e.g. 15:30)"
+                variant="label-hidden"
+                
+                required class="time-input">
+            </lightning-input>
+                       <!-- Custom dropdown for time options -->
+            <template if:true={showDropdown}>
+                <div class="custom-time-dropdown slds-box slds-m-top_x-small">
+                    <ul class="slds-list_none">
+                        <template for:each={timeOptions} for:item="option">
+    <li key={option.value} class="slds-p-vertical_xx-small">
+        <a href="javascript:void(0);" data-value={option.value} onclick={handleTimeSelect}>
+            {option.label}
+        </a>
+    </li>
+</template>
+
+                    </ul>
+                </div>
+            </template>     
+            
+                </div>
                 </div>
   
 

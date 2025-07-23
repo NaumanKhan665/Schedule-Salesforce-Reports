@@ -1,4 +1,10 @@
 
-
-.slds-dropdown__item:last-child .report-option {
+.custom-time-dropdown {
+    position: absolute;
+    background: white;
+    border: 1px solid #d8dde6;
+    z-index: 10;
+    max-height: 200px;
+    overflow-y: auto;
+    width: 100%;
 }

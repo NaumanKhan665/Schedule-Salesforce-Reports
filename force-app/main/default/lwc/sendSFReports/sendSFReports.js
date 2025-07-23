@@ -42,12 +42,12 @@ export default class ReportEmailScheduler extends LightningElement {
     @track currentUserId = '';
     @track currentUserName = '';
     @track reportNameMap = new Map(); // Store report ID to name mapping
-    
-    // Edit mode properties
+
     @track isEditMode = false;
     @track editingScheduleId = '';
     @track editingScheduleData = {};
-
+  @track showAdvanced = false;
+    @track showDropdown = false;
     // Schedule type options
     scheduleTypeOptions = [
         { label: 'Daily', value: 'Daily' },
@@ -62,15 +62,16 @@ get formatOptions() {
     ];
 }
     // Day options for weekly schedule
-    weeklyDayOptions = [
-        { label: 'Monday', value: 'Monday' },
-        { label: 'Tuesday', value: 'Tuesday' },
-        { label: 'Wednesday', value: 'Wednesday' },
-        { label: 'Thursday', value: 'Thursday' },
-        { label: 'Friday', value: 'Friday' },
-        { label: 'Saturday', value: 'Saturday' },
-        { label: 'Sunday', value: 'Sunday' }
-    ];
+    @track days = [
+    { id: 'monday', name: 'Monday', label: 'Mon', checked: false },
+    { id: 'tuesday', name: 'Tuesday', label: 'Tue', checked: false },
+    { id: 'wednesday', name: 'Wednesday', label: 'Wed', checked: false },
+    { id: 'thursday', name: 'Thursday', label: 'Thu', checked: false },
+    { id: 'friday', name: 'Friday', label: 'Fri', checked: false },
+    { id: 'saturday', name: 'Saturday', label: 'Sat', checked: false },
+    { id: 'sunday', name: 'Sunday', label: 'Sun', checked: false }
+];
+
 
     // Day options for monthly schedule
     monthlyDayOptions = [
@@ -244,6 +245,9 @@ get formatOptions() {
     get daySelectionPlaceholder() {
         return this.selectedScheduleType === 'Weekly' ? 'Choose day of week...' : 'Choose day of month...';
     }
+get showEditDaySelection() {
+    return this.isEditMode && (this.selectedScheduleType === 'Weekly' || this.selectedScheduleType === 'Monthly');
+}
 
     get dayOptions() {
         return this.selectedScheduleType === 'Weekly' ? this.weeklyDayOptions : this.monthlyDayOptions;
@@ -263,11 +267,9 @@ get formatOptions() {
                !this.selectedTime || 
                !this.selectedFormat||
          (this.showDaySelection && (
-               (this.isWeekly
-                   ? (this.isEditMode 
-                       ? !this.selectedDay 
-                       : (!this.selectedDays || this.selectedDays.length === 0))
-                   : !this.selectedDay)
+               this.isWeekly
+                       ? (!this.selectedDays || this.selectedDays.length === 0)
+                   : !this.selectedDay
            ));
     }
 
@@ -307,14 +309,76 @@ get formatOptions() {
     }
 
     handleDayChange(event) {
-        this.selectedDay = event.detail.value;
-        this.clearStatus();
-    }
+    const dayName = event.target.dataset.day;
+    const isChecked = event.target.checked;
 
+    this.days = this.days.map(day =>
+        day.name === dayName ? { ...day, checked: isChecked } : day
+    );
+
+    this.selectedDays = this.days
+        .filter(day => day.checked)
+        .map(day => day.name);
+
+    this.clearStatus();
+}
+ 
+handleMonthlyDayChange(event) {
+    this.selectedDay = event.detail.value;
+    this.clearStatus();
+}
+
+timeOptions = Array.from({ length: 24 }, (_, hour)  => {
+        const hourStr = String(hour).padStart(2, '0');
+        const label = `${hourStr}:00 (${this.formatTo12Hour(hour, 0)})`;
+        return { value: `${hourStr}:00`, label };
+    });
+
+    formatTo12Hour(hour, min) {
+        const suffix = hour >= 12 ? 'PM' : 'AM';
+        const displayHour = hour % 12 || 12;
+        const minStr = String(min).padStart(2, '0');
+        return `${displayHour}:${minStr} ${suffix}`;
+    }
+ showTimeDropdown() {
+        this.showDropdown = true;
+    }
     handleTimeChange(event) {
         this.selectedTime = event.target.value;
-        this.clearStatus();
+       // this.showDropdown = true;
     }
+
+    handleToggleChange(event) {
+        this.showAdvanced = event.target.checked;
+    }
+
+    handleTimeSelect(event) {
+        event.preventDefault();
+        const value = event.currentTarget.dataset.value;
+        this.selectedTime = value;
+        this.showDropdown = false;
+         setTimeout(() => {
+            const input = this.template.querySelector('.time-input');
+            if (input) {
+                input.focus();
+            }
+        }, 0);
+
+        
+    }
+
+   
+handleTimeTyping(event) {
+    // Prevent dropdown from showing when typing
+    this.showDropdown = false;
+}
+
+    
+
+  /*  handleTimeChange(event) {
+        this.selectedTime = event.target.value;
+        this.clearStatus();
+    }*/
 
     handleSubjectChange(event) {
         this.emailSubject = event.target.value;
@@ -378,44 +442,44 @@ handleFormatChange(event) {
         const isWeekly = this.selectedScheduleType === 'Weekly';
     const daysToSchedule = isWeekly ? this.selectedDays : [this.selectedDay];
 
-    const promises = daysToSchedule.map(day => {
-        const scheduleData = {
-            reportId: this.selectedReportId,
-            emailAddresses: this.emailList,
-            scheduleType: this.selectedScheduleType,
-           scheduleDay: day, // ✅ Correct: use loop value
-            scheduleTime: this.selectedTime,
-            emailSubject: this.emailSubject || this.generateDefaultSubject(),
-             emailBody: this.emailBody || '',
-              fileFormat:this.selectedFormat
-        };
-           return scheduleReportEmail({ scheduleData: JSON.stringify(scheduleData) });
- });
- console.log('Scheduling for days:', daysToSchedule);
+  const scheduleData = {
+    reportId: this.selectedReportId,
+    emailAddresses: this.emailList,
+    scheduleType: this.selectedScheduleType,
+    scheduleDay: daysToSchedule.join(';'), // ✅ Multiple days as a single string
+    scheduleTime: this.selectedTime,
+    emailSubject: this.emailSubject || this.generateDefaultSubject(),
+    emailBody: this.emailBody || '',
+    fileFormat: this.selectedFormat
+};
 
-       Promise.all(promises)
-            .then(result => {
-                this.showToast('Success', 'Report email scheduled successfully', 'success');
-                this.showStatusMessage('Report email scheduled successfully!', 'slds-text-color_success');
-                this.resetForm();
-                this.loadScheduledReports();
-            })
-            .catch(error => {
-                console.error('Error scheduling report:', error);
-                this.showToast('Error', 'Failed to schedule report email', 'error');
-                this.showStatusMessage('Failed to schedule report email. Please try again.', 'slds-text-color_error');
-            });
+scheduleReportEmail({ scheduleData: JSON.stringify(scheduleData) })
+    .then(() => {
+        this.showToast('Success', 'Report email scheduled successfully', 'success');
+        this.showStatusMessage('Report email scheduled successfully!', 'slds-text-color_success');
+        this.resetForm();
+        this.loadScheduledReports();
+    })
+    .catch(error => {
+        console.error('Error scheduling report:', error);
+        this.showToast('Error', 'Failed to schedule report email', 'error');
+        this.showStatusMessage('Failed to schedule report email. Please try again.', 'slds-text-color_error');
+    });
+
     }
 
     // New method to handle updating existing schedule
     updateExistingSchedule() {
-   console.log('Day',this.selectedDay)
+    const isWeekly = this.selectedScheduleType === 'Weekly';
+    const scheduleDayValue = isWeekly
+        ? this.selectedDays.join(';')      // 🔁 Join multiple days
+        : this.selectedDay;
 
 const scheduleData = {
     reportId: this.selectedReportId,
     emailAddresses: this.emailList,
     scheduleType: this.selectedScheduleType,
-    scheduleDay: this.selectedDay,
+    scheduleDay: scheduleDayValue,
     scheduleTime: this.selectedTime,
     emailSubject: this.emailSubject || this.generateDefaultSubject(),
     emailBody: this.emailBody || '',
@@ -475,9 +539,14 @@ const scheduleData = {
             this.selectedScheduleType = result.scheduleType;
             this.searchTerm = reportName || '';
 
-            // Populate schedule day(s) depending on type
-            
-                this.selectedDay  = result.scheduleDay || '';
+           // Populate schedule day(s) depending on type
+if (result.scheduleType === 'Weekly') {
+    this.selectedDays = result.scheduleDay ? result.scheduleDay.split(';') : [];
+    this.selectedDay = ''; // Clear old single day value
+} else {
+    this.selectedDay = result.scheduleDay || '';
+    this.selectedDays = []; // Clear any previous multi-day values
+}
               
             
 
@@ -676,6 +745,11 @@ console.log("Schedule ID  delete:", scheduleId);
     this.emailSubject = '';
     this.emailBody = '';
   this.selectedFormat ='';
+ this.days.forEach(day => {
+    day.checked = false;
+});
+
+  
     this.clearStatus();
 }
 

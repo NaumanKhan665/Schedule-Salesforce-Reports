@@ -138,8 +138,19 @@ private static String createScheduledJob(String reportId, List<String> emailAddr
             }
             when 'Weekly' {
                 // Weekly on specified day at specified time
-                String dayOfWeek = getDayOfWeekNumber(scheduleDay);
-                cronExpression = '0 ' + minute + ' ' + hour + ' ? * ' + dayOfWeek;
+                List<String> days = scheduleDay.split(';');
+List<String> dayNumbers = new List<String>();
+
+for (String day : days) {
+    String dayNum = getDayOfWeekNumber(day.trim());
+    if (dayNum != null) {
+        dayNumbers.add(dayNum);
+    }
+}
+
+String cronDays = String.join(dayNumbers, ',');
+cronExpression = '0 ' + minute + ' ' + hour + ' ? * ' + cronDays;
+
             }
             when 'Monthly' {
                 // Monthly on specified day at specified time
@@ -453,18 +464,24 @@ private static DateTime calculateNextFireTime(String scheduleType, String schedu
                 nextFire = nextFire.addDays(1);
             }
         } else if (scheduleType == 'Weekly') {
-            // Get target day of week (1=Sunday, 2=Monday, etc.)
-            Integer targetDayOfWeek = Integer.valueOf(getDayOfWeekNumber(scheduleDay));
-            Date today = now.date();
-            Integer currentDayOfWeek = Math.mod(Date.newInstance(1900, 1, 7).daysBetween(today), 7) + 1;
-            
-            Integer daysToAdd = targetDayOfWeek - currentDayOfWeek;
-            if (daysToAdd < 0) daysToAdd += 7;
-            
-            nextFire = DateTime.newInstance(today.addDays(daysToAdd), Time.newInstance(hour, minute, 0, 0));
-            if (nextFire <= now) {
-                nextFire = nextFire.addDays(7);
-            }
+            List<String> days = scheduleDay.split(';');
+DateTime soonestFire = null;
+
+for (String day : days) {
+    Integer targetDayOfWeek = Integer.valueOf(getDayOfWeekNumber(day.trim()));
+    Integer currentDayOfWeek = Math.mod(Date.newInstance(1900, 1, 7).daysBetween(now.date()), 7) + 1;
+
+    Integer daysToAdd = targetDayOfWeek - currentDayOfWeek;
+    if (daysToAdd < 0) daysToAdd += 7;
+
+    DateTime fireTime = DateTime.newInstance(now.date().addDays(daysToAdd), Time.newInstance(hour, minute, 0, 0));
+    if (soonestFire == null || fireTime < soonestFire) {
+        soonestFire = fireTime;
+    }
+}
+
+nextFire = (soonestFire <= now) ? soonestFire.addDays(7) : soonestFire;
+
         } else if (scheduleType == 'Monthly') {
             // Simplified monthly calculation
             Date today = now.date();
