@@ -19,12 +19,39 @@ public class ReportEmailSchedulable implements Schedulable {
             throw new AuraHandledException('Simulated batch failure'); 
 
         }
-            Database.executeBatch(new ReportEmailBatch(reportId, emailAddresses, emailSubject, emailBody,fileFormat), 1);
-             System.debug('Class Run successfulll ');
+            //Database.executeBatch(new ReportEmailBatch(reportId, emailAddresses, emailSubject, emailBody,fileFormat), 1);
+            System.enqueueJob(new ReportEmailQueueable(reportId, emailAddresses, emailSubject, emailBody,fileFormat));
+ 
+            System.debug('Class Run successfulll ');
 
         } catch (Exception e) {
             System.debug('Error enqueuing report email queueable: ' + e.getMessage());
             sendErrorNotificationToAdmin(e.getMessage());
+        }
+         try {
+            String jobId = context.getTriggerId();
+
+            // Query CronTrigger to get the next fire time
+            CronTrigger ct = [SELECT NextFireTime FROM CronTrigger WHERE Id = :jobId LIMIT 1];
+String editjobId = jobId.substring(0, 15);
+            // Update schedule record
+            List<Report_Schedule__c> schedules = [
+    SELECT Id 
+    FROM Report_Schedule__c 
+    WHERE Job_Id__c = :editjobId AND Is_Active__c = TRUE 
+    LIMIT 1
+];
+
+          if (!schedules.isEmpty()) {
+            schedules[0].Next_Fire_Time__c = ct.NextFireTime;
+            update schedules;
+            System.debug('NextFireTime updated on schedule record.');
+        } else {
+            System.debug('No matching schedule record found for Job_Id__c: ' + editjobId);
+        }
+            system.debug('Time'+ schedules[0].Next_Fire_Time__c);
+        } catch (Exception e) {
+            System.debug('Failed to update next fire time: ' + e.getMessage());
         }
     }
 

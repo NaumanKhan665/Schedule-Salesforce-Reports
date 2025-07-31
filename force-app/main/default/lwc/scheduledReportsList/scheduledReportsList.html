@@ -1,11 +1,19 @@
-<!-- reportEmailScheduler.html -->
 <template>
-    <lightning-card title="Schedule Report Email" icon-name="standard:email">
-        <div class="slds-p-horizontal_medium">
+     <!-- Edit Reports Section -->
+    <template if:true={isEditMode}>
+    <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open">
+        <div class="slds-modal__container" style="margin-top: 3rem;">
+            <!-- Modal Header -->
+            <header class="slds-modal__header">
+                <h2 class="slds-modal__title slds-hyphenate">Edit Scheduled Report</h2>
+            </header>
 
-            <!-- Search Report -->
-          <div class="slds-form-element  slds-size_1-of-1">
-        <label class="slds-form-element__label" for="combobox-id-3" id="combobox-label-id-32">Report</label>
+            <!-- Modal Body -->
+            <div class="slds-modal__content slds-p-around_medium">
+                <!-- Report Selection -->
+                      <!-- Search Input -->
+         <div class="slds-form-element slds-size_1-of-1 " data-id="report-search-wrapper" onfocusout={handleBlur} tabindex="0">
+        <label class="slds-form-element__label" for="combobox-id-3" id="combobox-label-id-32">Report:</label>
         <div class="slds-form-element__control ">
         <div class="slds-combobox_container">
         <div class="slds-combobox slds-dropdown-trigger slds-dropdown-trigger_click slds-is-open">
@@ -35,15 +43,15 @@
         </template>
         <template lwc:else>
         <div class="slds-combobox__form-element slds-input-has-icon slds-input-has-icon_right" role="none">
-        <input type="text" class="slds-input slds-combobox__input "  id="combobox-id-3" aria-activedescendant="option1" aria-autocomplete="list" aria-controls="listbox-id-3" aria-expanded="true" aria-haspopup="listbox" 
+        <input type="text" class="slds-input slds-combobox__input slds-has-focus "  id="combobox-id-3" aria-activedescendant="option1" aria-autocomplete="list" aria-controls="listbox-id-3" aria-expanded="true" aria-haspopup="listbox" 
         role="combobox" placeholder="Search..."   
-        onkeyup={handleSearchChange}
-        onblur={handleBlur}/>
-<template if:true={showSearchValidationError}>
+        onkeyup={handleSearchChange} onblur={handleError} />
+           <template if:true={showSearchValidationError}>
          <div class="slds-form-element__help" style="color: red; font-weight: 500;">
-        Select an report from list or remove the search term.
+        Select an report from the list or remove the search term.
           </div>
              </template>
+
         <span class="slds-icon_container slds-icon-utility-search slds-input__icon slds-input__icon_right">
             <lightning-icon icon-name="utility:search" size="x-small"></lightning-icon> 
         <!-- <svg class="slds-icon slds-icon slds-icon_x-small slds-icon-text-default" aria-hidden="true">
@@ -59,7 +67,7 @@
         <ul class="slds-listbox slds-listbox_vertical" role="presentation">
          
          <template for:each={reports} for:item="report">  
-        <li key={report.Id}  role="presentation" class="slds-listbox__item" data-item={report.Id} onclick={handleReportSelect} >
+        <li key={report.Id}  role="presentation" class="slds-listbox__item" data-item={report.Id} onclick={handleReportSelect}>
         <div aria-selected="true"  class="slds-media slds-listbox__option slds-listbox__option_entity slds-listbox__option_has-meta slds-has-focus" role="option" tabindex="0">
         <span class="slds-media__figure slds-listbox__option-icon">
         <span class="slds-icon_container slds-icon-standard-account">
@@ -86,12 +94,9 @@
         </div>
         </div> 
 
-  
-         
-
 
 <!-- Report Format Picker 2-->
-<div class="slds-form-element slds-m-bottom_medium" data-id="report-format-wrapper">
+<div class="slds-form-element slds-m-bottom_medium" data-id="report-format-wrapper" onfocusout={handleBlur}   tabindex="0">
     <label class="slds-form-element__label">
         <abbr class="slds-required" title="required">*</abbr>
         Report Format
@@ -145,8 +150,7 @@
         </div>
     </div>
 </div>
-
-            <!-- Recipients Section -->
+                              <!-- Recipients Section -->
             <div class="slds-form-element slds-m-bottom_medium">
                 <label class="slds-form-element__label">
                     <abbr class="slds-required" title="required">*</abbr>
@@ -176,9 +180,8 @@
                         <lightning-pill
                             key={email}
                             label={email}
-                            
+                            icon-name="utility:email"
                             name={email}
-                            
                             onremove={removeEmail}
                             class="slds-m-right_x-small slds-m-bottom_x-small">
                              <lightning-icon icon-name="standard:email" alternative-text="email">
@@ -188,34 +191,29 @@
                 </div>
             </div>
 
-            <!-- Schedule Type Section -->
-            <div class="slds-form-element slds-m-bottom_medium">
-                <label class="slds-form-element__label">
-                    <abbr class="slds-required" title="required">*</abbr>
-                    Schedule Type
-                </label>
-                <div class="slds-form-element__control">
-                    <lightning-radio-group
-                        name="scheduleType"
-                        label="Schedule Type"
-                        options={scheduleTypeOptions}
-                        value={selectedScheduleType}
-                        onchange={handleScheduleTypeChange}
-                        type="radio"
-                        variant="label-hidden">
-                    </lightning-radio-group>
+                <!-- Schedule Type -->
+                <div class="slds-form-element slds-m-bottom_medium">
+                    <label class="slds-form-element__label">Schedule Type</label>
+                    <div class="slds-form-element__control">
+                        <lightning-radio-group
+                            name="editScheduleType"
+                            options={scheduleTypeOptions}
+                            value={selectedScheduleType}
+                            onchange={handleScheduleTypeChange}
+                            type="radio">
+                        </lightning-radio-group>
+                    </div>
                 </div>
-            </div>
 
+                <!-- Day Selector (if Weekly or Monthly) -->
+            
             <!-- Day Selection (for Weekly/Monthly) -->
+           <!-- Day Selector (if Weekly or Monthly) -->
             <div if:true={showDaySelection} class="slds-form-element slds-m-bottom_medium">
-                <label class="slds-form-element__label">
-                    <abbr class="slds-required" title="required">*</abbr>
-                    {daySelectionLabel}
-                </label>
+                
                 <div class="slds-form-element__control">
-    <template if:true={isWeekly}>
-    <div class="slds-form-element__control">
+            <template if:true={isWeekly}>
+     <div class="slds-form-element__control">
         <div class="slds-checkbox_button-group">
             <template for:each={days} for:item="day">
                 <span class="slds-button slds-checkbox_button" key={day.name}>
@@ -235,7 +233,6 @@
         </div>
     </div>
 </template>
-
 <template if:false={isWeekly}>
     <lightning-combobox
         name="daySelector"
@@ -244,16 +241,13 @@
         placeholder={daySelectionPlaceholder}
         options={dayOptions}
         onchange={handleMonthlyDayChange}
-        variant="label-hidden"
         required>
     </lightning-combobox>
 </template>
-
-                </div>
-            </div>
-
-            <!-- Time Selection -->
-        <div class="slds-form-element slds-m-bottom_medium">
+</div>
+</div>
+                <!-- Time -->
+                  <div class="slds-form-element slds-m-bottom_medium">
                 <label class="slds-form-element__label">
                     <abbr class="slds-required" title="required">*</abbr>
                     Schedule Time
@@ -270,7 +264,8 @@
                     </lightning-input>
                 </div>
             </div>
-                                    <!-- Advanced Options Toggle -->
+  
+                          <!-- Advanced Options Toggle -->
          <div class="slds-form-element slds-m-bottom_medium">
           <lightning-input
         type="checkbox"
@@ -279,25 +274,22 @@
         onchange={handleToggleChange}>
     </lightning-input>
               </div>
-            <!-- Email Subject -->
-              <template if:true={showAdvanced}>
-            <div class="slds-form-element slds-m-bottom_medium">
-                <label class="slds-form-element__label">
-                    Email Subject
-                </label>
-                <div class="slds-form-element__control">
-                    <lightning-input
-                        type="text"
-                        name="emailSubject"
-                        placeholder="Enter email subject (optional)"
-                        value={emailSubject}
-                        onchange={handleSubjectChange}
-                        variant="label-hidden">
-                    </lightning-input>
+          <template if:true={showAdvanced}>
+                <!-- Email Subject -->
+                <div class="slds-form-element slds-m-bottom_medium">
+                    <label class="slds-form-element__label">Email Subject</label>
+                    <div class="slds-form-element__control">
+                        <lightning-input
+                            type="text"
+                            name="editEmailSubject"
+                            value={emailSubject}
+                            onchange={handleSubjectChange}>
+                        </lightning-input>
+                    </div>
                 </div>
-            </div>
-            <!-- Email Body -->
-                    <div class="slds-form-element slds-m-bottom_medium">
+           
+               <!-- Email Body -->
+                         <div class="slds-form-element slds-m-bottom_medium">
                    <label class="slds-form-element__label">Email Body</label>
                 <div class="slds-form-element__control">
                   <lightning-input-rich-text
@@ -308,35 +300,125 @@
                 </lightning-input-rich-text>
                   </div>
                </div>
-            
-            </template>
+               </template>
+             </div>
+             
+            <!-- Modal Footer -->
+            <footer class="slds-modal__footer">
+                <lightning-button variant="neutral" label="Cancel" onclick={closeEditModal}></lightning-button>
+                <lightning-button variant="brand" label="Update Schedule" onclick={handleSchedule}></lightning-button>
+            </footer>
+           
+        </div>
+    </section>
+    </template>
+     <!-- Scheduled Reports Section -->
+    <lightning-card title="Scheduled Reports" icon-name="standard:list_email" class="slds-m-top_medium">
+        <div class="slds-p-horizontal_medium">
 
+            <div class="slds-m-bottom_medium slds-text-align_right">
+                <lightning-button
+                    label="Refresh"
+                    icon-name="utility:refresh"
+                    onclick={refreshScheduledReports}
+                    class="slds-m-right_small">
+                </lightning-button>
+            </div>
 
-            <!-- Status Section -->
-            <div if:true={showStatus} class="slds-m-bottom_medium">
-                <lightning-formatted-text value={statusMessage} class={statusClass}>
-                </lightning-formatted-text>
+            <div if:true={isLoadingSchedules} class="slds-text-align_center slds-m-vertical_medium">
+                <lightning-spinner alternative-text="Loading scheduled reports..." size="small"></lightning-spinner>
+            </div>
+
+            <div if:true={showNoSchedulesMessage} class="slds-text-align_center slds-m-vertical_large">
+                <lightning-icon icon-name="utility:info" size="medium" class="slds-m-bottom_small"></lightning-icon>
+                <p class="slds-text-heading_small slds-text-color_weak">No scheduled reports found</p>
+                <p class="slds-text-body_small slds-text-color_weak">Schedule your first report using the form above</p>
+            </div>
+
+            <div if:true={hasScheduledReports} class="scheduled-reports-container">
+
+              <div class="slds-box slds-box_xx-small slds-m-bottom_x-small slds-theme_shade">
+             <div class="slds-grid slds-gutters slds-align_absolute-center slds-text-title_caps slds-text-color_weak" style="column-gap: 1rem; white-space: nowrap;   overflow-x: auto;">
+            <div class="slds-col" style="width: 180px;"><strong>Report Name</strong></div>
+            <div class="slds-col" style="width: 130px;"><strong>Scheduled By</strong></div>
+            <div class="slds-col" style="width: 110px;"><strong>Schedule Time</strong></div>
+            <div class="slds-col" style="width: 110px;"><strong>Schedule Type</strong></div>
+            <div class="slds-col" style="width: 100px;"><strong>Total Recipients</strong></div>
+            <div class="slds-col" style="width: 180px;"><strong>Next Run</strong></div>
+            <div class="slds-col slds-text-align_right" style="min-width: 140px;"><strong>Status / Actions</strong></div>
+                        </div>
+                          </div>
+
+                <template for:each={scheduledReports} for:item="schedule">
+                    <div key={schedule.id} class="slds-box slds-box_xx-small slds-m-bottom_x-small">
+                        <div class="slds-grid slds-gutters slds-align_absolute-center slds-text-body_small" style="column-gap: 1rem; white-space: nowrap; overflow-x: auto;">
+
+                            <div class="slds-col" style="width: 180px;">
+                                <lightning-icon icon-name="standard:report" size="x-small" class="slds-m-right_xx-small"></lightning-icon>
+                                <strong>{schedule.reportName}</strong>
+                            </div>
+
+                            <div class="slds-col" style="width: 130px;">
+                                <lightning-icon icon-name="utility:user" size="x-small" class="slds-m-right_xx-small"></lightning-icon>
+                                {schedule.scheduledBy}
+                            </div>
+
+                            <div class="slds-col" style="width: 110px;">
+                                <lightning-icon icon-name="utility:clock" size="x-small" class="slds-m-right_xx-small"></lightning-icon>
+                                {schedule.scheduleTime}
+                            </div>
+
+                            <div class="slds-col" style="width: 110px;">
+                                <lightning-icon icon-name="utility:recurring_exception" size="x-small" class="slds-m-right_xx-small"></lightning-icon>
+                                {schedule.scheduleType}
+                            </div>
+
+                            <div class="slds-col" style="width: 100px;">
+                                <lightning-icon icon-name="utility:email" size="x-small" class="slds-m-right_xx-small"></lightning-icon>
+                                {schedule.recipientCount}
+                            </div>
+
+                            <div class="slds-col" style="width: 180px;">
+                                <lightning-icon icon-name="utility:forward" size="x-small" class="slds-m-right_xx-small"></lightning-icon>
+                                <lightning-formatted-date-time 
+                                    value={schedule.nextFireTime}
+                                    year="numeric"
+                                    month="short"
+                                    day="2-digit"
+                                    hour="2-digit"
+                                    minute="2-digit">
+                                </lightning-formatted-date-time>
+                            </div>
+
+                            <div class="slds-col slds-text-align_right" style="min-width: 140px;">
+                                <lightning-badge 
+                                    label={schedule.status}
+                                    variant={schedule.statusVariant}
+                                    class="slds-m-right_x-small">
+                                </lightning-badge>
+                                <lightning-button-icon
+                                    icon-name="utility:edit"
+                                    alternative-text="Edit"
+                                    title="Edit"
+                                    onclick={handleEditSchedule}
+                                    data-schedule-id={schedule.id}
+                                    class="slds-m-left_xx-small">
+                                </lightning-button-icon>
+                                <lightning-button-icon
+                                    icon-name="utility:delete"
+                                    alternative-text="Delete"
+                                    title="Delete"
+                                    onclick={handleDeleteSchedule}
+                                    data-schedule-id={schedule.id}
+                                    class="slds-m-left_xx-small">
+                                </lightning-button-icon>
+                            </div>
+
+                        </div>
+                    </div>
+                </template>
             </div>
 
         </div>
-
-        <!-- Footer Actions -->
-        <div slot="footer" class="slds-text-align_right">
-            <lightning-button
-                label="Cancel"
-                onclick={handleCancel}
-                class="slds-m-right_small">
-            </lightning-button>
-            <lightning-button
-                label="Schedule Report"
-                variant="brand"
-                onclick={handleSchedule}
-                disabled={isScheduleDisabled}>
-            </lightning-button>
-        </div>
     </lightning-card>
-
-    <!-- Scheduled Reports Section -->
-   
-
 </template>

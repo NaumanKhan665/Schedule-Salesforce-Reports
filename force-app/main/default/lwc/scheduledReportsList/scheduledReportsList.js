@@ -8,23 +8,18 @@ import getScheduledJobs from '@salesforce/apex/ReportSchedulerController.getSche
 import deleteScheduledJob from '@salesforce/apex/ReportSchedulerController.deleteScheduledJob';
 import getScheduleById from '@salesforce/apex/ReportSchedulerController.getScheduleById';
 import updateSchedule from '@salesforce/apex/ReportSchedulerController.updateSchedule';
-
 import searchReports from '@salesforce/apex/ReportSearchController.searchReports';
 
 export default class ReportEmailScheduler extends LightningElement {
-
- @track searchTerm = '';
+    @track searchTerm = '';
     @track reports = [];
     @track selectedReportName = '';
     @track reportID = ''; // This will store the selected report ID
     @track isLoading = false;
     @track showDropdown = false;
-
-    
-@track selectedDays = []; // For weekly multi-day selection
-
+    @track selectedDays = []; // For weekly multi-day selection
     @track selectedReportId = '';
-      @track showAdvanced = false;
+    @track showAdvanced = false;
     @track currentEmail = '';
     @track emailList = [];
     @track selectedScheduleType = 'Daily';
@@ -42,24 +37,12 @@ export default class ReportEmailScheduler extends LightningElement {
     @track currentUserId = '';
     @track currentUserName = '';
     @track reportNameMap = new Map(); // Store report ID to name mapping
-
     @track isEditMode = false;
     @track editingScheduleId = '';
     @track editingScheduleData = {};
-  @track showAdvanced = false;
-    @track showDropdown = false;
-    //
-    @track selectedFormatLabel = 'Choose file format...';
-@track selectedFormatIcon = '';
-@track showReportFormatDropdown =false;
-@track selectedReportIcon = 'standard:report'; // Default icon
-
-@track object="Report";
-    searchValue;
-@track objectLabel="Report";
- @track objectIcon="standard:account";
-  @track  displayOption=false;
-@track showSearchValidationError = false;
+    @track displayOption = false;
+    @track selectedFormatLabel = '';
+    @track showReportFormatDropdown = false;
 
     // Schedule type options
     scheduleTypeOptions = [
@@ -67,42 +50,25 @@ export default class ReportEmailScheduler extends LightningElement {
         { label: 'Weekly', value: 'Weekly' },
         { label: 'Monthly', value: 'Monthly' }
     ];
-get formatOptions() {
-    return [
-        { label: 'Excel (.xlsx)', value: 'xlsx', icon: 'doctype:excel' },
-        { label: 'Excel 97-2003 (.xls)', value: 'xls', icon: 'doctype:excel' },
-        { label: 'CSV (.csv)', value: 'csv', icon: 'doctype:csv' }
-    ];
-}
-toggleReportFormatDropdown(event) {
-     event.stopPropagation();
-    this.showReportFormatDropdown = !this.showReportFormatDropdown;
-}
-handleFormatIconSelect(event) {
-     this.selectedFormat = event.currentTarget.dataset.value;
-    console.log('Selected value:', this.selectedFormat);
-    const selected = this.formatOptions.find(opt => opt.value === this.selectedFormat);
-    console.log('Selected object:', selected);
-    if (selected) {
-        this.selectedFormat = selected.value;
-        this.selectedFormatLabel = selected.label;
-        this.selectedFormatIcon = selected.icon;
-        this.showReportFormatDropdown = false;
-    }
-    console.log(selectedFormat)
 
-}
+    get formatOptions() {
+        return [
+            { label: 'Excel (.xlsx)', value: 'xlsx', icon: 'doctype:excel' },
+            { label: 'Excel 97-2003 (.xls)', value: 'xls', icon: 'doctype:excel' },
+            { label: 'CSV (.csv)', value: 'csv', icon: 'doctype:csv' }
+        ];
+    }
+
     // Day options for weekly schedule
     @track days = [
-    { id: 'monday', name: 'Monday', label: 'Mon', checked: false },
-    { id: 'tuesday', name: 'Tuesday', label: 'Tue', checked: false },
-    { id: 'wednesday', name: 'Wednesday', label: 'Wed', checked: false },
-    { id: 'thursday', name: 'Thursday', label: 'Thu', checked: false },
-    { id: 'friday', name: 'Friday', label: 'Fri', checked: false },
-    { id: 'saturday', name: 'Saturday', label: 'Sat', checked: false },
-    { id: 'sunday', name: 'Sunday', label: 'Sun', checked: false }
-];
-
+        { id: 'monday', name: 'Monday', label: 'Mon', checked: false },
+        { id: 'tuesday', name: 'Tuesday', label: 'Tue', checked: false },
+        { id: 'wednesday', name: 'Wednesday', label: 'Wed', checked: false },
+        { id: 'thursday', name: 'Thursday', label: 'Thu', checked: false },
+        { id: 'friday', name: 'Friday', label: 'Fri', checked: false },
+        { id: 'saturday', name: 'Saturday', label: 'Sat', checked: false },
+        { id: 'sunday', name: 'Sunday', label: 'Sun', checked: false }
+    ];
 
     // Day options for monthly schedule
     monthlyDayOptions = [
@@ -136,137 +102,84 @@ handleFormatIconSelect(event) {
         { label: '28th', value: '28' },
         { label: 'Last day', value: 'Last' }
     ];
-   debounceTimer;
-get computedSearchIcon() {
-    return this.selectedReportId ? 'doctype:report' : 'utility:search';
-}
 
+    debounceTimer;
 
-//lookup search
- handleBlur(event) {
-    // Small delay to allow clicks on dropdown options before hiding
-    setTimeout(() => {
-       
-       
-         this.validateReportSearch();
-    }, 200);
-}
-
-validateReportSearch() {
-    const isInvalid = this.searchTerm  && !this.selectedReportId;
-
-    this.showSearchValidationError = isInvalid;
-
-    return !isInvalid;
-}
-
-get searchInputClass() {
-    return `slds-input slds-combobox__input slds-has-focus ${this.showSearchValidationError ? 'slds-has-error' : ''}`;
-}
-
-
-
-
-
-get isRecordSelected(){
-
-     return  this.selectedReportId ===""? false : true;
-
-
-
-}
-
-removeSelectionHandler(event){
-
-
-this.selectedReportId='';
-  this.selectedReportName='';
-this.displayOption=false;
-console.log('id',this.selectedReportId);
-}
-//Lookup
-    handleSearchChange(event) {
-        this.searchTerm = event.target.value;
-          console.log('new',this.searchTerm);
-        this.displayOption=true;
-        //console.log('new',searchTerm);
-        // Clear previous timer
-        clearTimeout(this.debounceTimer);
-        
-        // Set new timer for debounced search
-        this.debounceTimer = setTimeout(() => {
-            if (this.searchTerm.length >= 1) {
-                this.performSearch();
-            } else {
-                this.reports = [];
-                this.displayOption = false;
-            }
-        }, 300);
+    get isRecordSelected() {
+        return this.selectedReportId === "" ? false : true;
     }
 
-    performSearch() {
-        this.isLoading = true;
-        
-        searchReports({ searchTerm: this.searchTerm })
-            .then(result => {
-                this.reports = result.map(report => ({
-                    Id: report.Id,
-                    Name: report.Name,
-                    FolderName: report.FolderName,
-                    Description: report.Description || 'No description available'
-                }));
-                this.displayOption = this.reports.length > 0;
-                this.isLoading = false;
-            })
-            .catch(error => {
-                this.isLoading = false;
-                this.showToast('Error', 'Error searching reports: ' + error.body.message, 'error');
-            });
+    get isWeekly() {
+        return this.selectedScheduleType === 'Weekly';
     }
 
-    handleReportSelect(event) {
-
-        const selectedId = event.currentTarget.dataset.item;
-         console.log('id',selectedId);
-        const selectedReport = this.reports.find(report => report.Id === selectedId);
-        
-        if (selectedReport) {
-            this.selectedReportId = selectedReport.Id;
-            this.selectedReportName = selectedReport.Name;
-            this.searchTerm = selectedReport.Name;
-            console.log('name',this.selectedReportName);
-           //  this.selectedReportIcon = 'standard:report'; 
-            this.displayOption = false;
-            if (this.isEditMode) {
-    this.editingScheduleData.reportId = selectedReport.Id;
-}
-            
-           // this.showToast('Success', `Report "${selectedReport.Name}" selected`, 'success');
-        }
+    get hasEmails() {
+        return this.emailList.length > 0;
     }
 
-   
-
-
-    clearSelection() {
-        this.selectedReportId = '';
-        this.selectedReportName = '';
-        this.searchTerm = '';
-        this.reports = [];
-        this.showDropdown = false;
-        this.displayOption=false;
+    get isAddEmailDisabled() {
+        return !this.currentEmail || !this.isValidEmail(this.currentEmail);
     }
 
- 
+    get showDaySelection() {
+        return this.selectedScheduleType === 'Weekly' || this.selectedScheduleType === 'Monthly';
+    }
 
-    // Getter for displaying current selection
+    get daySelectionLabel() {
+        return this.selectedScheduleType === 'Weekly' ? 'Select Day of Week' : 'Select Day of Month';
+    }
+
+    get daySelectionPlaceholder() {
+        return this.selectedScheduleType === 'Weekly' ? 'Choose day of week...' : 'Choose day of month...';
+    }
+
+    get showEditDaySelection() {
+        return this.isEditMode && (this.selectedScheduleType === 'Weekly' || this.selectedScheduleType === 'Monthly');
+    }
+
+    get dayOptions() {
+        return this.selectedScheduleType === 'Weekly' ? this.weeklyDayOptions : this.monthlyDayOptions;
+    }
+
+    get hasScheduledReports() {
+        return this.scheduledReports && this.scheduledReports.length > 0;
+    }
+
+    get showNoSchedulesMessage() {
+        return !this.isLoadingSchedules && !this.hasScheduledReports;
+    }
+
+    get isScheduleDisabled() {
+        return !this.selectedReportId || 
+               !this.hasEmails || 
+               !this.selectedTime || 
+               !this.selectedFormatLabel ||
+               (this.showDaySelection && (
+                   this.isWeekly
+                       ? (!this.selectedDays || this.selectedDays.length === 0)
+                       : !this.selectedDay
+               ));
+    }
+
+    get cardTitle() {
+        return this.isEditMode ? 'Edit Scheduled Report' : 'Schedule Report Email';
+    }
+
+    get submitButtonLabel() {
+        return this.isEditMode ? 'Update Schedule' : 'Schedule Report';
+    }
+
+    get cancelButtonLabel() {
+        return this.isEditMode ? 'Cancel Edit' : 'Cancel';
+    }
+
     get hasSelection() {
         return this.selectedReportId !== '';
     }
 
-    get isWeekly() {
-    return this.selectedScheduleType === 'Weekly';
-}
+    get searchInputClass() {
+        return `slds-input slds-combobox__input slds-has-focus ${this.showSearchValidationError ? 'slds-has-error' : ''}`;
+    }
 
     // Wire method to get reports
     @wire(getReports)
@@ -299,70 +212,86 @@ console.log('id',this.selectedReportId);
         this.loadScheduledReports();
     }
 
-    // Computed properties
-    get hasEmails() {
-        return this.emailList.length > 0;
+    handleSearchChange(event) {
+        this.searchTerm = event.target.value;
+        console.log('new', this.searchTerm);
+        this.displayOption = true;
+        
+        // Clear previous timer
+        clearTimeout(this.debounceTimer);
+        
+        // Set new timer for debounced search
+        this.debounceTimer = setTimeout(() => {
+            if (this.searchTerm.length >= 2) {
+                this.performSearch();
+            } else {
+                this.reports = [];
+                this.displayOption = false;
+            }
+        }, 300);
     }
 
-    get isAddEmailDisabled() {
-        return !this.currentEmail || !this.isValidEmail(this.currentEmail);
+    performSearch() {
+        this.isLoading = true;
+        console.log('searching', this.searchTerm);
+        searchReports({ searchTerm: this.searchTerm })
+            .then(result => {
+                this.reports = result.map(report => ({
+                    Id: report.Id,
+                    Name: report.Name,
+                    FolderName: report.FolderName,
+                    Description: report.Description || 'No description available'
+                }));
+                this.displayOption = this.reports.length > 0;
+                this.isLoading = false;
+            })
+            .catch(error => {
+                this.isLoading = false;
+                this.showToast('Error', 'Error searching reports: ' + error.body.message, 'error');
+            });
     }
 
-    get showDaySelection() {
-        return this.selectedScheduleType === 'Weekly' || this.selectedScheduleType === 'Monthly';
+    handleReportSelect(event) {
+        const selectedId = event.currentTarget.dataset.item;
+        const selectedReport = this.reports.find(report => report.Id === selectedId);
+        
+        if (selectedReport) {
+            this.selectedReportId = selectedReport.Id;
+            this.selectedReportName = selectedReport.Name;
+            this.searchTerm = selectedReport.Name;
+            this.displayOption = false;
+            if (this.isEditMode) {
+                this.editingScheduleData.reportId = selectedReport.Id;
+            }
+        }
     }
 
-    get daySelectionLabel() {
-        return this.selectedScheduleType === 'Weekly' ? 'Select Day of Week' : 'Select Day of Month';
+    handleInputFocus() {
+        if (this.reports.length > 0) {
+            this.showDropdown = true;
+        }
     }
 
-    get daySelectionPlaceholder() {
-        return this.selectedScheduleType === 'Weekly' ? 'Choose day of week...' : 'Choose day of month...';
-    }
-get showEditDaySelection() {
-    return this.isEditMode && (this.selectedScheduleType === 'Weekly' || this.selectedScheduleType === 'Monthly');
-}
-
-    get dayOptions() {
-        return this.selectedScheduleType === 'Weekly' ? this.weeklyDayOptions : this.monthlyDayOptions;
+    handleInputBlur() {
+        // Delay hiding dropdown to allow for click events
+        setTimeout(() => {
+            this.showDropdown = false;
+        }, 200);
     }
 
-    get hasScheduledReports() {
-        return this.scheduledReports && this.scheduledReports.length > 0;
+    clearSelection() {
+        this.selectedReportId = '';
+        this.selectedReportName = '';
+        this.searchTerm = '';
+        this.reports = [];
+        this.showDropdown = false;
     }
 
-    get showNoSchedulesMessage() {
-        return !this.isLoadingSchedules && !this.hasScheduledReports;
-    }
-
-    get isScheduleDisabled() {
-        return !this.selectedReportId || 
-               !this.hasEmails || 
-               !this.selectedTime || 
-               !this.selectedFormat||
-         (this.showDaySelection && (
-               this.isWeekly
-                       ? (!this.selectedDays || this.selectedDays.length === 0)
-                   : !this.selectedDay
-           ));
-    }
-
-    handleDaysChange(event) {
-    this.selectedDays = event.detail.value;
-    this.clearStatus();
-}
-
-    // New computed properties for edit mode
-    get cardTitle() {
-        return this.isEditMode ? 'Edit Scheduled Report' : 'Schedule Report Email';
-    }
-
-    get submitButtonLabel() {
-        return this.isEditMode ? 'Update Schedule' : 'Schedule Report';
-    }
-
-    get cancelButtonLabel() {
-        return this.isEditMode ? 'Cancel Edit' : 'Cancel';
+    removeSelectionHandler(event) {
+        this.selectedReportId = '';
+        this.selectedReportName = '';
+        this.displayOption = false;
+        console.log('id', this.selectedReportId);
     }
 
     // Event handlers
@@ -378,43 +307,45 @@ get showEditDaySelection() {
     handleScheduleTypeChange(event) {
         this.selectedScheduleType = event.detail.value;
         this.selectedDay = ''; // Reset day selection when schedule type changes
-         this.selectedDays = [];
+        this.selectedDays = [];
+        this.clearStatus();
+    }
+
+    handleDaysChange(event) {
+        this.selectedDays = event.detail.value;
         this.clearStatus();
     }
 
     handleDayChange(event) {
-    const dayName = event.target.dataset.day;
-    const isChecked = event.target.checked;
+        const dayName = event.target.dataset.day;
+        const isChecked = event.target.checked;
 
-    this.days = this.days.map(day =>
-        day.name === dayName ? { ...day, checked: isChecked } : day
-    );
+        this.days = this.days.map(day =>
+            day.name === dayName ? { ...day, checked: isChecked } : day
+        );
 
-    this.selectedDays = this.days
-        .filter(day => day.checked)
-        .map(day => day.name);
+        this.selectedDays = this.days
+            .filter(day => day.checked)
+            .map(day => day.name);
 
-    this.clearStatus();
-}
- 
-handleMonthlyDayChange(event) {
-    this.selectedDay = event.detail.value;
-    this.clearStatus();
-}
+        this.clearStatus();
+    }
+    
+    handleMonthlyDayChange(event) {
+        this.selectedDay = event.detail.value;
+        this.clearStatus();
+    }
 
-
-
-  
- 
+    toggleReportFormatDropdown(event) {
+        event.stopPropagation();
+        this.showReportFormatDropdown = !this.showReportFormatDropdown;
+    }
 
     handleToggleChange(event) {
         this.showAdvanced = event.target.checked;
     }
 
-   
-
-
-  handleTimeChange(event) {
+    handleTimeChange(event) {
         this.selectedTime = event.target.value;
         this.clearStatus();
     }
@@ -422,17 +353,29 @@ handleMonthlyDayChange(event) {
     handleSubjectChange(event) {
         this.emailSubject = event.target.value;
     }
-    
 
-handleBodyChange(event) {
-    this.emailBody = event.target.value;
-} 
-handleFormatChange(event) {
-    this.selectedFormat  = event.target.value;
-}
- handleToggleChange(event) {
-        this.showAdvanced = event.target.checked;
+    handleBodyChange(event) {
+        this.emailBody = event.target.value;
     }
+
+    handleFormatChange(event) {
+        this.selectedFormat = event.target.value;
+    }
+
+    handleFormatIconSelect(event) {
+        const selectedValue = event.currentTarget.dataset.value;
+        console.log('Selected value:', selectedValue);
+        const selected = this.formatOptions.find(opt => opt.value === selectedValue);
+        console.log('Selected object:', selected);
+        if (selected) {
+            this.selectedFormat = selected.value;
+            this.selectedFormatLabel = selected.label;
+            this.selectedFormatIcon = selected.icon;
+            this.showReportFormatDropdown = false;
+        }
+        console.log(selectedValue);
+    }
+
     addEmail() {
         if (this.currentEmail && this.isValidEmail(this.currentEmail)) {
             if (!this.emailList.includes(this.currentEmail)) {
@@ -456,11 +399,13 @@ handleFormatChange(event) {
     handleCancel() {
         this.resetForm();
         this.exitEditMode();
-    }  closeEditModal() {
+    }
+
+    closeEditModal() {
         this.resetForm();
         this.exitEditMode();
         this.isEditMode = false;
-                this.clearStatus();
+        this.clearStatus();
     }
 
     handleSchedule() {
@@ -471,53 +416,120 @@ handleFormatChange(event) {
 
         if (this.isEditMode) {
             this.updateExistingSchedule();
-        } else {
-            this.createNewSchedule();
         }
     }
 
-    // New method to handle creating new schedule
-    createNewSchedule() {
+    // Method to handle updating existing schedule
+    updateExistingSchedule() {
         const isWeekly = this.selectedScheduleType === 'Weekly';
-    const daysToSchedule = isWeekly ? this.selectedDays : [this.selectedDay];
-   console.log('Format value',this.selectedFormat);
-  const scheduleData = {
-    reportId: this.selectedReportId,
-    emailAddresses: this.emailList,
-    scheduleType: this.selectedScheduleType,
-    scheduleDay: daysToSchedule.join(';'), // ✅ Multiple days as a single string
-    scheduleTime: this.selectedTime,
-    emailSubject: this.emailSubject || this.generateDefaultSubject(),
-    emailBody: this.emailBody || '',
-    fileFormat: this.selectedFormat
-};
+        const scheduleDayValue = isWeekly
+            ? this.selectedDays.join(';')
+            : this.selectedDay;
 
-scheduleReportEmail({ scheduleData: JSON.stringify(scheduleData) })
-    .then(() => {
-        this.showToast('Success', 'Report email scheduled successfully', 'success');
-        this.showStatusMessage('Report email scheduled successfully!', 'slds-text-color_success');
-        this.resetForm();
-        this.loadScheduledReports();
-    })
-    .catch(error => {
-        console.error('Error scheduling report:', error);
-        this.showToast('Error', 'Failed to schedule report email', 'error');
-        this.showStatusMessage('Failed to schedule report email. Please try again.', 'slds-text-color_error');
-    });
+        const scheduleData = {
+            reportId: this.selectedReportId,
+            emailAddresses: this.emailList,
+            scheduleType: this.selectedScheduleType,
+            scheduleDay: scheduleDayValue,
+            scheduleTime: this.selectedTime,
+            emailSubject: this.emailSubject || this.generateDefaultSubject(),
+            emailBody: this.emailBody || '',
+            fileFormat: this.selectedFormat
+        };
 
+        updateSchedule({ 
+            scheduleId: this.editingScheduleId, 
+            scheduleData: JSON.stringify(scheduleData) 
+        })
+            .then(result => {
+                this.showToast('Success', 'Schedule updated successfully', 'success');
+                this.showStatusMessage('Schedule updated successfully!', 'slds-text-color_success');
+                this.resetForm();
+                this.exitEditMode();
+                this.loadScheduledReports();
+            })
+            .catch(error => {
+                console.error('Error updating schedule:', error);
+                this.showToast('Error', 'Failed to update schedule', 'error');
+                this.showStatusMessage('Failed to update schedule. Please try again.', 'slds-text-color_error');
+            });
     }
 
-    // New method to handle updating existing schedule
-  
+    // Method to handle edit button click
+    handleEditSchedule(event) {
+        const scheduleId = event.target.dataset.scheduleId;
+        if (scheduleId && scheduleId.length > 15) {
+            scheduleId = scheduleId.substring(0, 15);
+        }
+        console.log('schedule Id', scheduleId);
+        if (!scheduleId) {
+            console.error('Schedule ID not found');
+            return;
+        }
 
-    // New method to handle edit button click
+        this.loadScheduleForEdit(scheduleId);
+    }
 
-    // New method to load schedule data for editing
- 
+    // Method to load schedule data for editing
+    loadScheduleForEdit(scheduleId) {
+        getScheduleById({ scheduleId: scheduleId })
+            .then(result => {
+                this.editingScheduleId = scheduleId;
+                this.editingScheduleData = result;
+                this.selectedReportId = result.reportId;
+                const reportName = this.reportNameMap.get(result.reportId);
+                this.emailList = result.emailAddresses || [];
+                this.selectedScheduleType = result.scheduleType;
+                this.searchTerm = reportName || '';
+                this.selectedReportName = reportName || '';
+                
+                // Populate schedule day(s) depending on type
+                if (result.scheduleType === 'Weekly') {
+                    this.selectedDays = result.scheduleDay ? result.scheduleDay.split(';') : [];
+                    this.selectedDay = ''; // Clear old single day value
+                    this.days = this.days.map(day => ({
+                        ...day,
+                        checked: this.selectedDays.includes(day.name)
+                    }));
+                } else {
+                    this.selectedDay = result.scheduleDay || '';
+                    this.selectedDays = []; // Clear any previous multi-day values
+                }
+                
+                const formatFromBackend = result.fileFormat;
+                const matchedFormat = this.formatOptions.find(opt => opt.value === formatFromBackend);
 
-    // New method to exit edit mode
-   
-    // New method to scroll to form
+                if (matchedFormat) {
+                    this.selectedFormat = matchedFormat.value;
+                    this.selectedFormatLabel = matchedFormat.label;
+                    this.selectedFormatIcon = matchedFormat.icon;
+                }
+
+                // Set other fields
+                this.selectedTime = result.scheduleTime;
+                this.emailSubject = result.emailSubject || '';
+                this.emailBody = result.emailBody || '';
+                    
+                this.isEditMode = true;
+                this.clearStatus();
+
+                // Scroll to form
+                this.scrollToForm();
+            })
+            .catch(error => {
+                console.error('Error loading schedule for edit:', error);
+                this.showToast('Error', 'Failed to load schedule data for edit', 'error');
+            });
+    }
+
+    // Method to exit edit mode
+    exitEditMode() {
+        this.isEditMode = false;
+        this.editingScheduleId = '';
+        this.editingScheduleData = {};
+    }
+
+    // Method to scroll to form
     scrollToForm() {
         const formElement = this.template.querySelector('lightning-card');
         if (formElement) {
@@ -620,10 +632,9 @@ scheduleReportEmail({ scheduleData: JSON.stringify(scheduleData) })
     handleDeleteSchedule(event) {
         const scheduleId = event.target.dataset.scheduleId;
         
-           if (scheduleId && scheduleId.length > 15) {
-        scheduleId = scheduleId.substring(0, 15);
-    }
-        
+        if (scheduleId && scheduleId.length > 15) {
+            scheduleId = scheduleId.substring(0, 15);
+        }
         
         if (!scheduleId) {
             console.error('Schedule ID not found');
@@ -642,7 +653,7 @@ scheduleReportEmail({ scheduleData: JSON.stringify(scheduleData) })
 
     deleteSchedule(scheduleId) {
         if (confirm('Are you sure you want to delete this scheduled report?')) {
-console.log("Schedule ID  delete:", scheduleId);
+            console.log("Schedule ID delete:", scheduleId);
             deleteScheduledJob({ jobId: scheduleId })
                 .then(result => {
                     this.showToast('Success', 'Scheduled report deleted successfully', 'success');
@@ -672,32 +683,27 @@ console.log("Schedule ID  delete:", scheduleId);
         return `${this.selectedScheduleType} ${reportName}`;
     }
 
-   resetForm() {
-    this.selectedReportId = '';
-    this.selectedReportName = '';
-    this.searchTerm = '';          // ✅ Clear input field
-    this.reports = [];             // ✅ Clear result list
-    this.showDropdown = false;     // ✅ Hide dropdown
-    this.currentEmail = '';
-    this.emailList = [];
-    this.selectedScheduleType = 'Daily';
-    this.selectedDay = '';
-    this.selectedDays = [];
-    this.selectedTime = '09:00';
-    this.emailSubject = '';
-    this.emailBody = '';
-  this.selectedFormat ='';
- this.days.forEach(day => {
-    day.checked = false;
-    this.showAdvanced=false;
-     this.selectedFormatLabel = 'Choose file format...';
-     this.selectedFormatIcon = '';
-});
-
-  
-    this.clearStatus();
-}
-
+    resetForm() {
+        this.selectedReportId = '';
+        this.selectedReportName = '';
+        this.searchTerm = '';
+        this.reports = [];
+        this.showDropdown = false;
+        this.currentEmail = '';
+        this.emailList = [];
+        this.selectedScheduleType = 'Daily';
+        this.selectedDay = '';
+        this.selectedDays = [];
+        this.selectedTime = '09:00';
+        this.emailSubject = '';
+        this.emailBody = '';
+        this.selectedFormat = '';
+        this.days.forEach(day => {
+            day.checked = false;
+            this.showAdvanced = false;
+        });
+        this.clearStatus();
+    }
 
     showStatusMessage(message, cssClass) {
         this.statusMessage = message;
@@ -720,43 +726,23 @@ console.log("Schedule ID  delete:", scheduleId);
         this.dispatchEvent(event);
     }
 
-
-   // At the top of your class
-handleClickOutsideBound = this.handleClickOutside.bind(this);
-
-// Then use this in connected/disconnected
-connectedCallback() {
-    window.addEventListener('click', this.handleClickOutsideBound);
-}
-
-disconnectedCallback() {
-    window.removeEventListener('click', this.handleClickOutsideBound);
-}
-
-handleClickOutside(event) {
-    const path = event.composedPath();
-    const formatWrapper = this.template.querySelector('[data-id="report-format-wrapper"]');
-    const searchWrapper = this.template.querySelector('[data-id="report-search-wrapper"]');
-
-    const clickedInsideFormat = formatWrapper && path.includes(formatWrapper);
-    const clickedInsideSearch = searchWrapper && path.includes(searchWrapper);
-
-    // Close both if clicking outside both
-    if (!clickedInsideFormat) {
-        this.showReportFormatDropdown = false;
-    }
-    if (!clickedInsideSearch) {
-        this.displayOption = false;
+    handleBlur(event) {
+        // Small delay to allow clicks on dropdown options before hiding
+        setTimeout(() => {
+            this.displayOption = false;
+            this.showReportFormatDropdown = false;
+        }, 200);
     }
 
-    // ✅ If clicked inside one, hide the other
-    if (clickedInsideFormat && !clickedInsideSearch) {
-        this.displayOption = false;
+    handleError(event) {
+        setTimeout(() => {
+            this.validateReportSearch();
+        }, 200);
     }
-    if (clickedInsideSearch && !clickedInsideFormat) {
-        this.showReportFormatDropdown = false;
+
+    validateReportSearch() {
+        const isInvalid = this.searchTerm && !this.selectedReportId;
+        this.showSearchValidationError = isInvalid;
+        return !isInvalid;
     }
-}
-
-
 }
