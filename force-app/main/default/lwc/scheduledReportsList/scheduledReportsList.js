@@ -43,7 +43,7 @@ export default class ReportEmailScheduler extends LightningElement {
     @track displayOption = false;
     @track selectedFormatLabel = '';
     @track showReportFormatDropdown = false;
-
+    @track selectedFormatIcon = '';
     // Schedule type options
     scheduleTypeOptions = [
         { label: 'Daily', value: 'Daily' },
@@ -214,7 +214,7 @@ export default class ReportEmailScheduler extends LightningElement {
 
     handleSearchChange(event) {
         this.searchTerm = event.target.value;
-        console.log('new', this.searchTerm);
+        
         this.displayOption = true;
         
         // Clear previous timer
@@ -222,7 +222,7 @@ export default class ReportEmailScheduler extends LightningElement {
         
         // Set new timer for debounced search
         this.debounceTimer = setTimeout(() => {
-            if (this.searchTerm.length >= 2) {
+            if (this.searchTerm.length >= 1) {
                 this.performSearch();
             } else {
                 this.reports = [];
@@ -247,7 +247,7 @@ export default class ReportEmailScheduler extends LightningElement {
             })
             .catch(error => {
                 this.isLoading = false;
-                this.showToast('Error', 'Error searching reports: ' + error.body.message, 'error');
+                 console.log('search failed',error);
             });
     }
 
@@ -373,7 +373,7 @@ export default class ReportEmailScheduler extends LightningElement {
             this.selectedFormatIcon = selected.icon;
             this.showReportFormatDropdown = false;
         }
-        console.log(selectedValue);
+        
     }
 
     addEmail() {
@@ -745,4 +745,22 @@ export default class ReportEmailScheduler extends LightningElement {
         this.showSearchValidationError = isInvalid;
         return !isInvalid;
     }
+
+    handleReportFormatFocusOut(event){
+setTimeout(() => {
+        const formatWrapper = this.template.querySelector('[data-id="report-format-wrapper"]');
+        if (!formatWrapper.contains(document.activeElement)) {
+            this.showReportFormatDropdown = false;
+        }
+    }, 200);
+}
+
+handleReportSearchFocusOut(event) {
+    setTimeout(() => {
+        const searchWrapper = this.template.querySelector('.slds-combobox_container');
+        if (!searchWrapper.contains(document.activeElement)) {
+            this.displayOption = false;
+        }
+    }, 200);
+}
 }

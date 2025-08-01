@@ -89,7 +89,7 @@ handleFormatIconSelect(event) {
         this.selectedFormatIcon = selected.icon;
         this.showReportFormatDropdown = false;
     }
-    console.log(selectedFormat)
+    
 
 }
     // Day options for weekly schedule
@@ -187,7 +187,7 @@ console.log('id',this.selectedReportId);
 //Lookup
     handleSearchChange(event) {
         this.searchTerm = event.target.value;
-          console.log('new',this.searchTerm);
+          
         this.displayOption=true;
         //console.log('new',searchTerm);
         // Clear previous timer
@@ -220,7 +220,7 @@ console.log('id',this.selectedReportId);
             })
             .catch(error => {
                 this.isLoading = false;
-                this.showToast('Error', 'Error searching reports: ' + error.body.message, 'error');
+                 console.log('search failed',error);
             });
     }
 
@@ -721,42 +721,21 @@ console.log("Schedule ID  delete:", scheduleId);
     }
 
 
-   // At the top of your class
-handleClickOutsideBound = this.handleClickOutside.bind(this);
-
-// Then use this in connected/disconnected
-connectedCallback() {
-    window.addEventListener('click', this.handleClickOutsideBound);
+handleReportFormatFocusOut(event){
+setTimeout(() => {
+        const formatWrapper = this.template.querySelector('[data-id="report-format-wrapper"]');
+        if (!formatWrapper.contains(document.activeElement)) {
+            this.showReportFormatDropdown = false;
+        }
+    }, 200);
 }
 
-disconnectedCallback() {
-    window.removeEventListener('click', this.handleClickOutsideBound);
+handleReportSearchFocusOut(event) {
+    setTimeout(() => {
+        const searchWrapper = this.template.querySelector('.slds-combobox_container');
+        if (!searchWrapper.contains(document.activeElement)) {
+            this.displayOption = false;
+        }
+    }, 200);
 }
-
-handleClickOutside(event) {
-    const path = event.composedPath();
-    const formatWrapper = this.template.querySelector('[data-id="report-format-wrapper"]');
-    const searchWrapper = this.template.querySelector('[data-id="report-search-wrapper"]');
-
-    const clickedInsideFormat = formatWrapper && path.includes(formatWrapper);
-    const clickedInsideSearch = searchWrapper && path.includes(searchWrapper);
-
-    // Close both if clicking outside both
-    if (!clickedInsideFormat) {
-        this.showReportFormatDropdown = false;
-    }
-    if (!clickedInsideSearch) {
-        this.displayOption = false;
-    }
-
-    // ✅ If clicked inside one, hide the other
-    if (clickedInsideFormat && !clickedInsideSearch) {
-        this.displayOption = false;
-    }
-    if (clickedInsideSearch && !clickedInsideFormat) {
-        this.showReportFormatDropdown = false;
-    }
-}
-
-
 }

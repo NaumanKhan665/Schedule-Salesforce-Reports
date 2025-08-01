@@ -45,7 +45,7 @@
         <div class="slds-combobox__form-element slds-input-has-icon slds-input-has-icon_right" role="none">
         <input type="text" class="slds-input slds-combobox__input slds-has-focus "  id="combobox-id-3" aria-activedescendant="option1" aria-autocomplete="list" aria-controls="listbox-id-3" aria-expanded="true" aria-haspopup="listbox" 
         role="combobox" placeholder="Search..."   
-        onkeyup={handleSearchChange} onblur={handleError} />
+        onkeyup={handleSearchChange} onblur={handleError} onfocusout={handleReportSearchFocusOut} />
            <template if:true={showSearchValidationError}>
          <div class="slds-form-element__help" style="color: red; font-weight: 500;">
         Select an report from the list or remove the search term.
@@ -110,7 +110,7 @@
                             class="slds-combobox__input slds-input_faux full-width" 
                             aria-haspopup="listbox" 
                             onclick={toggleReportFormatDropdown}
-                             onfocusout={handleFocusOut}>
+                             onfocusout={handleReportFormatFocusOut}>
                             <lightning-icon 
                                 icon-name={selectedFormatIcon} 
                                 size="x-small" 
